@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}
+Funds home
+{% endblock title %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row my-5">
+        <div class="col-md-8"> <h5><b>FUNDS</b></h5></div>
+    
+        <div align="right" class="col-md-4">        
+            <a href="{% url 'home' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
+                <i class="fas fa-home"> Home</i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container shadow">
+    <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" href="{% url 'add_fund' %}">
+        <i class="fas fa-plus"> Add New Fund</i>
+    </a>
+
+    <table class="table table-borderless table-hover table-sm" cellspacing="1px">
+        <thead class="border-bottom">
+            <tr class="" style="font-weight:bold">
+                <td>Fund name</td>
+                <td align="center">Currency</td>
+                <td align="right">Committed Capital</td>
+                <td align="right">Drawn Down</td>
+                <td align="right">Undrawn</td>
+                <td align="center">Actions</td>
+            </tr>
+        </thead>
+        <tbody>
+        {% if funds_data %}
+            {% for fund_data in funds_data %}
+            <tr class="border-bottom" onclick="window.location='{{fund_data.fund.get_absolute_url}}';" style="cursor: pointer;">
+                <td >{{fund_data.fund.name}}</td>
+                <td align="center">{{ fund_data.fund.currency }}</td>
+                <td align="right">{{ fund_data.committed_capital }}</td>
+                <td align="right">{{ fund_data.called_capital }}</td>
+                <td align="right">{{ fund_data.undrawn_commitment }}</td>
+                <td align="center">
+                    <a href="{% url 'edit_fund' pk=fund_data.fund.id %}" class="btn btn-sm btn-block btn-success">Update</a>
+                    <a href="{% url 'delete_fund' pk=fund_data.fund.id %}" class="btn btn-sm btn-block btn-danger">Delete</a>
+                </td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr><td>There are no funds to display</td></tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+
+{% block title %}
+    Edit Fund
+{% endblock title %}
+
+{% block content %}
+<div class="container col-md-10 offset-md-1 mt-3">
+    <h2 class="">Edit Fund</h2>
+    <hr class="">
+    <form action="" method="post" autocomplete="off">
+        {% csrf_token %}
+        {{ form.as_p }}
+        
+        <div class="col-md-6 mt-3">
+            <button type="submit" value="submit" class="btn btn-block btn-success btn-sm col-md-3"><i class="fas fa-save"></i>  Save</button>
+            <a href="{% url 'funds' %}" class="btn btn-secondary btn-sm btn-block btn-danger col-md-3"><i class="fas fa-danger"></i> Close</a> 
+        </div>    
+    </form>
+</div>
+
+{% endblock content %}

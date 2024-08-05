@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}
+Contacts home
+{% endblock title %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row my-5">
+        <div class="col-md-8"> <h5><b>CONTACTS</b></h5></div>
+
+        <div align="right" class="col-md-4">        
+            <a href="{% url 'home' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
+                <i class="fas fa-home"> Home</i>
+            </a>
+        </div>
+    </div>
+</div>
+{% for message in messages %}
+    <p class="alert alert-success mt-2">{{message}}</p>
+{% endfor %}
+
+<div class="container shadow">
+   <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" href="{% url 'add_contact' %}">
+        <i class="fas fa-plus"> Add New Contact</i>
+    </a>
+
+    <table class="table table-borderless table-sm">
+        <thead class="border-bottom font-weight-bold">
+            <tr class="" style="font-weight:bold">
+                <td>Full name</td>
+                <td>Organisation</td>
+                <td>Phone Number</td>
+                <td>Contact Email</td>
+            </tr>
+        </thead>
+        <tbody>
+        {% for contact in contacts %}
+            <tr class="border-bottom">
+                <td>{{ contact.name}}&nbsp{{ contact.surname }}</td>
+                <td>{{ contact.investor }}</td>
+                <td>{{ contact.phone_number }}</td>
+                <td>{{ contact.email_address }}</td>
+                <td align="center">
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}

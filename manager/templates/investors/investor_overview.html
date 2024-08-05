@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}
+Investor details
+{% endblock title %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-md mt-2">
+        <p align="right">
+                    <a href="{% url 'investors' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
+                        <i class="fas fa-home"> Home</i>
+                    </a>
+                    <a href="{% url 'investors' %}" class="btn btn-outline-success" style="height:30px;width:200px;padding:2px">
+                        <i class="fas fa-step-backward"> Back to investors</i>
+                    </a>
+        </p>
+    </div>
+</div>
+
+<div class="row">
+	<div class="col-md mt-2">
+		<div class="card card-body"  background-color="lightblue">
+			<h4 style="font-weight:bold">{{investor}}</h4>
+			<hr>
+			<a class="btn btn-outline-success  btn-sm btn-block" href="#"><b>Update Investor</b></a>
+			<a class="btn btn-outline-danger  btn-sm btn-block mt-2" href="#"><b>Delete Investor</b></a>
+		</div>
+	</div>
+
+	<div class="col-md mt-2">
+		<div class="card card-body">
+			<h4 style="font-weight:bold">Contact Information</h4>
+			<hr>
+			<p>Email: {{investor.contact_email}}</p>
+			<p>Phone: {{investor.phone}}</p>
+		</div>
+	</div>
+
+	<div class="col-md mt-2">
+		<div class="card card-body">
+			<h4 style="font-weight:bold">Fund Commitments</h4>
+			<hr>
+			<h1 style="text-align: center;padding: 7px; font-weight:bold">R20M</h1>
+		</div>
+	</div>
+</div>
+
+<b>
+<ul class="nav nav-tabs mt-3">
+    <li class="nav-item"><a class="nav-link active" aria-current="page" href="#details" data-bs-toggle="tab" role="tab">Investor Details</a></li>
+    <li class="nav-item"><a class="nav-link" href="#funds" data-bs-toggle="tab" role="tab">Fund Commitments</a></li>
+    <li class="nav-item"><a class="nav-link" href="#cash_flows" data-bs-toggle="tab" role="tab">Investor Cash Flows</a></li>
+    <li class="nav-item"><a class="nav-link" href="#mailing_lists" data-bs-toggle="tab" role="tab">Contacts</a></li>
+    <li class="nav-item"><a class="nav-link" href="#documents" data-bs-toggle="tab" role="tab">Documents</a></li>
+</ul>
+</b>
+
+<div class="tab-content mt-3">
+
+    <div role="tabpanel" class="tab-pane fade show active" id="details">
+
+        <table class="" style="width:100%">
+            <colgroup>
+                <col span="1" style="width: 30%;">
+                <col span="1" style="width: 70%;">
+            </colgroup>
+
+            <thead class="table-header">
+                
+            </thead>
+            <tbody>
+                <tr class="border-bottom"><td>Full Name</td><td>{{investor.name}}</td></tr>
+                <tr class="border-bottom"><td>Short Name</td><td>{{investor.short_name}}</td></tr>
+                <tr class="border-bottom"><td>Investor Category</td><td>{{investor.category}}</td></tr> 
+                <tr class="border-bottom"><td>Registration Number</td><td vertical-align: top>{{investor.reg_no}}</td></tr>
+                <tr class="border-bottom"><td>Business Address</td><td>{{investor.address}}<br>{{investor.city}}<br>{{investor.post_code}}</td></tr>
+                <tr class="border-bottom"><td>Key Contact Person</td><td>{{investor.key_contact}}</td></tr> 
+                <tr class="border-bottom"><td>Contact Phone Number</td><td>{{investor.phone}}</td></tr>
+                <tr class="border-bottom"><td>Email Address</td><td>{{investor.contact_email}}</td></tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="funds">
+        <h5>Fund Commitments</h5>
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="cash_flows">
+        <h5>Cash Flows</h5>
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="mailing_lists">
+    
+        <div class="card card-body col-md-12 shadow">
+            <a href='#'></a>
+            <table class="table table-sm">
+                <colgroup>
+                    <col span="1" style="width: 20%;">
+                    <col span="1" style="width: 10%;">
+                    <col span="1" style="width: 15%;">
+                    <col span="1" style="width: 10%;">
+                    <col span="1" style="width: 10%;">
+                    <col span="1" style="width: 10%;">
+                    <col span="1" style="width: 15%;">
+                </colgroup>
+
+                <thead>
+                    <th>Contact Name</th>
+                    <th style="text-align:center">Phone Number</th>
+                    <th style="text-align:center">Email Address</th>
+                    <th style="text-align:center">Main Contact</th>
+                    <th style="text-align:center">Advisory Board</th>
+                    <th style="text-align:center">IC Member</th>
+                    <th style="text-align:center">Reports</th>
+                    <th style="text-align:center">Actions</th>
+                </thead>
+                <tbody>
+                    {% for contact in contacts %}
+                        <tr onclick="window.location='#';"  style="cursor: pointer;">
+                        <td>{{contact.name}}&nbsp;{{contact.surname}}</td>
+                        <td align="center">{{contact.phone_number}}</td>
+                        <td align="center">{{contact.email_address}}</td>
+                        <td align="center">{{contact.main_contact}}</td>
+                        <td align="center">{{contact.adv_board_rep}}</td>
+                        <td align="center">{{contact.invest_comm_rep}}</td>
+                        <td align="center">{{contact.reports}}</td>
+                        <td align="center">
+                            <a href="#EditContact" data-bs-toggle="modal" role="modal" data-bs-target="#EditContact" class="btn btn-sm btn-warning">Edit</a>
+                            <a href="" class="btn btn-sm btn-danger">Delete</a>
+                            <div class="modal" tabindex="-1" id="EditContact">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Investor Contact</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form action="" method="post">
+                                            {% csrf_token %}
+                                            {{contact_form}}
+                                            </form>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            <button type="button" class="btn btn-primary">Save changes</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                        
+                        </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="documents">
+        <div class="container shadow col-md-8 shadow mt-2">
+            <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" href="#">
+                <i class="fas fa-plus"> Add New Document</i>
+            </a>
+            <table class="table table-sm">
+                <colgroup>
+                    <col span="1" style="width: 50%;">
+                    <col span="1" style="width: 50%;">
+                </colgroup>
+
+                <thead>
+                    <th>Document Description</th>
+                    <th style="text-align:center"></th>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                        <tr onclick="window.location='#';"  style="cursor: pointer;">
+                            <td>{{file.description}}</td>
+                            <td align="center">
+                                <a href="{{ file.inv_file.url}}" class="btn btn-sm btn-success">Download</a>
+                                <a href="#" class="btn btn-sm btn-warning">Update</a>
+                                <a href="#" class="btn btn-sm btn-danger">Delete</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock content %}

@@ -1,0 +1,51 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+Home
+{% endblock title %}
+
+{% block content %}
+
+<div class="card card-body p-3 mt-10" style="width:1000px; margin:0 auto;">
+    <table class="table">
+        <thead>
+        </thead>
+        <tr>
+            <td align="center">
+                <a href="#" class="btn btn-outline-success text-uppercase" style="height:200px;width:300px;padding:2px;display:table-cell; vertical-align: middle;font-size:2rem;">
+                    <i class="fas fa-filter"><br>Deals</i>
+                </a>
+            </td>
+            <td align="center">
+                <a href="{% url 'investments' %}" class="btn btn-outline-success text-uppercase" style="height:200px;width:300px;padding:2px;display:table-cell; vertical-align: middle;font-size:2rem;">
+                    <i class="fas fa-money-bill-alt"><br>Investments</i>
+                </a>
+            </td>
+            <td align="center">
+                <a href="{% url 'investors' %}" class="btn btn-outline-success text-uppercase" style="height:200px;width:300px;padding:2px;display:table-cell; vertical-align: middle;font-size:2rem;">
+                    <i class="fas fa-user-friends"><br>Investors</i>
+                </a>
+            </td>
+        </tr>
+                <tr>
+            <td align="center">
+                <a href="{% url 'funds' %}" class="btn btn-outline-success text-uppercase" style="height:200px;width:300px;padding:2px;display:table-cell; vertical-align: middle;font-size:2rem;">
+                    <i class="fas fa-coins"><br>Funds</i>
+                </a>
+            </td>
+            <td align="center">
+                <a href="#" class="btn btn-outline-success text-uppercase" style="height:200px;width:300px;padding:2px;display:table-cell; vertical-align: middle;font-size:2rem;">
+                    <i class="fas fa-file-signature"><br>Legal</i>
+                </a>
+            </td>
+            <td align="center">
+                <a href="" class="btn btn-outline-success text-uppercase" style="height:200px;width:300px;padding:2px;display:table-cell; vertical-align: middle;font-size:2rem;">
+                    <i class="fas fa-calculator"><br>Ledger</i>
+                </a>
+            </td>
+        </tr>
+    </table>
+</div>
+
+{% endblock content %}

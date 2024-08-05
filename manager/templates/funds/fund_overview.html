@@ -1,0 +1,394 @@
+
+{% extends "base.html" %}
+{% load custom_filters %}
+
+{% block title %}
+{{ fund.name}}
+{% endblock title %}
+
+{% block content %}
+
+<table class="table table-borderless table-hover" cellspacing="1px">
+    <thead>
+        <td align="right">
+            <a href="#" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
+                <i class="fas fa-plus"> Add New</i>
+            </a>
+            <a href="{% url 'funds' %}" class="btn btn-outline-success" style="height:30px;width:200px;padding:2px">
+                <i class="fas fa-step-backward"> Back to funds</i>
+            </a>
+        </td>
+    </thead>
+</table>
+
+<h5>{{fund}}</h5>
+<hr>
+<b>
+<ul class="nav nav-tabs">
+    <li class="nav-item"><a class="nav-link active" href="#overview" aria-current="page" data-bs-toggle="tab" role="tab">Overview</a></li>
+    <li class="nav-item"><a class="nav-link" href="#salient_terms" data-bs-toggle="tab" role="tab">Salient Terms</a></li>
+    <li class="nav-item"><a class="nav-link" href="#investors" data-bs-toggle="tab" role="tab">Investors</a></li>
+    <li class="nav-item"><a class="nav-link" href="#capital_accounts" data-bs-toggle="tab" role="tab">Capital Accounts</a></li>
+    <li class="nav-item"><a class="nav-link" href="#portfolio" data-bs-toggle="tab" role="tab">Portfolio</a></li>
+    <li class="nav-item"><a class="nav-link" href="#performance" data-bs-toggle="tab" role="tab">Cash Flows</a></li>
+    <li class="nav-item"><a class="nav-link" href="#operations" data-bs-toggle="tab" role="tab">Fund Operations</a></li>
+</ul>
+</b>
+
+<div class="tab-content mt-3">
+
+    <div role="tabpanel" class="tab-pane fade in show active" id="overview">
+
+        <div class="row col-md-12">
+            <div class="col-md-4">
+                <div class="card card-body p-3 shadow">
+                    <canvas id="Chart1" width="200" height="150"></canvas>
+                    <script>
+                    var ctx = document.getElementById('Chart1').getContext('2d');
+                    var Chart1 = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Committed Capital', 'Drawn / Undrawn'],
+                            datasets: [{
+                                label: 'Capital Contribution',
+                                data: [80, 45],
+                                backgroundColor: [
+                                    'navy',
+                                    'grey',
+                                    'rgba(53, 135, 164, 0.7)',
+                                    'rgba(121, 67, 117, 0.7)',
+                                
+                                ],
+                                borderColor: [
+                                    'navy',
+                                    'grey',
+                                    'rgba(54, 162, 235, 1)',
+                                ],
+                                borderWidth: 1
+                            },{
+                                label: 'Undrawn Capital',
+                                data: [0, 35],
+                                backgroundColor: [
+                                    'rgba(53, 135, 164, 0.7)',
+                                    'rgba(53, 135, 164, 0.7)',
+                                    'rgba(121, 67, 117, 0.7)',
+                                
+                                ],
+                                borderColor: [
+                                    'navy',
+                                    'grey',
+                                    'rgba(54, 162, 235, 1)',
+                                ],
+                                borderWidth: 1
+                            }],
+                            
+                        },
+                        options: {
+                            scales: {
+                                x: {
+                                    stacked: true,
+                                },
+                                y: {
+                                    stacked: true,
+                                }
+                            }
+                        }
+                    });
+                    </script>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card card-body p-3 shadow">
+                    <canvas id="Chart2" width="200" height="150"></canvas>
+                    <script>
+                    var ctx = document.getElementById('Chart2').getContext('2d');
+                    var Chart2 = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Committed Capital', 'Drawn / Undrawn'],
+                            datasets: [{
+                                label: 'Capital Commitments',
+                                data: [80, 45],
+                                backgroundColor: [
+                                    'navy',
+                                    'grey',
+                                    'rgba(53, 135, 164, 0.7)',
+                                    'rgba(121, 67, 117, 0.7)',
+                                
+                                ],
+                                borderColor: [
+                                    'navy',
+                                    'grey',
+                                    'rgba(54, 162, 235, 1)',
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                x: {
+                                    stacked: true,
+                                },
+                                y: {
+                                    stacked: true,
+                                }
+                            }
+                        }
+                    });
+                    </script>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card card-body p-3 shadow">
+                    <canvas id="Chart3" width="200" height="150"></canvas>
+                    <script>
+                    var ctx = document.getElementById('Chart3').getContext('2d');
+                    var Chart3 = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Committed Capital', 'Drawn / Undrawn'],
+                            datasets: [{
+                                label: 'Capital Commitments',
+                                data: [80, 45],
+                                backgroundColor: [
+                                    'navy',
+                                    'grey',
+                                    'rgba(53, 135, 164, 0.7)',
+                                    'rgba(121, 67, 117, 0.7)',
+                                
+                                ],
+                                borderColor: [
+                                    'navy',
+                                    'grey',
+                                    'rgba(54, 162, 235, 1)',
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                x: {
+                                    stacked: true,
+                                },
+                                y: {
+                                    stacked: true,
+                                }
+                            }
+                        }
+                    });
+                    </script>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <div role="tabpanel" class="tab-pane fade" id="salient_terms">
+
+        <div class="container shadow">
+
+            <div class="col-md-4 my-3">
+
+            </div>
+
+            <table class="" style="width:100%">
+                <colgroup>
+                    <col span="1" style="width: 35%;">
+                    <col span="1" style="width: 65%;">
+                </colgroup>
+
+                <thead class="table-header">
+                    
+                </thead>
+                <tbody>
+                    <tr class="border-bottom"><td>Fund Name</td><td>{{ fund.name }}</td></tr>
+                    <tr class="border-bottom"><td>Fund Short Name</td><td>{{ fund.short_name }}</td></tr>
+                    <tr class="border-bottom"><td>Fund Structure</td><td>{{fund.structure}}</td></tr>
+                    <tr class="border-bottom"><td>Fund Objective</td><td vertical-align: top>{{fund.objective}}</td></tr>
+                    <tr class="border-bottom"><td>Fund Life</td><td>{{fund.life}}</td></tr>
+                    <tr class="border-bottom"><td>Investment Period</td><td>{{fund.investment_period}}</td></tr>
+                    <tr class="border-bottom"><td>Divestment Period</td><td>{{fund.divestment_period}}</td></tr>
+                    <tr class="border-bottom"><td>Fund Currency</td><td>{{fund.currency}}</td></tr>
+                    <tr class="border-bottom"><td>Target commitment</td><td>{{fund.target_commitment}}</td></tr>
+                    <tr class="border-bottom"><td>Committed Capital</td><td><a href="#">{{ total_committed_capital }}</a></td></tr>
+                    <tr class="border-bottom"><td>Drawn Capital</td><td><a href="#">{{ total_drawn_capital }}</a></td></tr>
+                    <tr class="border-bottom"><td>Undrawn Commitment</td><td>{{ undrawn_committed_capital }}</td></tr>
+                    <tr class="border-bottom"><td>Distributions</td><td><a href="#">{{ total_distributions }}</a></td></tr>
+                    <tr class="border-bottom"><td>Management Fee % - <i>during Investment Period</i></td><td>{{fund.man_fee|percent:2}}</td></tr>
+                    <tr class="border-bottom"><td>Management Fee Basis - <i>during Investment Period</i></td><td>{{fund.man_fee|percent:2}}</td></tr>
+                    <tr class="border-bottom"><td>Management Fee % - <i>during Divestment Period</i></td><td>{{fund.man_fee|percent:2}}</td></tr>
+                    <tr class="border-bottom"><td>Management Fee Basis - <i>during Divestment Period</i></td><td>{{fund.man_fee|percent:2}}</td></tr>      
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="investors">
+
+        <div class="row">
+            <div class="col-md-7">
+                <table class="table" style="width:100%">
+                    <colgroup>
+                        <col span="1" style="width: 50%;">
+                        <col span="1" style="width: 30%;">
+                        <col span="1" style="width: 20%;">
+                    </colgroup>
+                    <thead class="table-header">
+                        <th style="text-align:left">Investor</th>
+                        <th style="text-align:right">Committed Capital</th>
+                        <th style="text-align:center">Fund Interest</th>
+                    </thead>
+                    {% if investors_data %}
+                        {% for investor_data in investors_data %}
+                        <tr>
+                            <td align="left">{{ investor_data.investor.name }}</td>
+                            <td align="right">{{ investor_data.committed_amount }}</td>
+                            <td align="center">{{ investor_data.fund_interest_committed|percent:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    <tr>
+                        <td align="left"><strong>Total</strong></td>
+                        <td align="right"><strong>{{ total_committed_capital }}</strong></td>
+                        <td align="center"><strong>{{ total_fund_interest_committed|percent:2 }}</strong></td>
+                    </tr>
+                    {% else %}
+                        <tr><td><b> There are no investor commitments to display</b></td></tr>
+                    {% endif %}
+                </table>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="capital_accounts">
+
+        <div class="row">
+            <div class="col-md-12 mt-10">
+                <table class="table">
+                    <colgroup>
+                        <col span="1" style="width: 28%;">
+                        <col span="1" style="width: 6%;">
+                        <col span="1" style="width: 9%;">
+                        <col span="1" style="width: 9%;">
+                        <col span="1" style="width: 9%;">
+                        <col span="1" style="width: 9%;">
+                        <col span="1" style="width: 9%;">
+                        <col span="1" style="width: 9%;">
+                    </colgroup>
+                    <thead class="border-bottom">
+                        <tr class="" style="font-weight:bold">
+                            <td align="left">Investor</td>
+                            <td align="center">Fund Interest</td>
+                            <td align="right">Contributions</td>
+                            <td align="right">Distributions</td>
+                            <td align="right">Operating Income</td>
+                            <td align="right">Operating Expenses</td>
+                            <td align="right">Unrealised Gains/(Losses)</td>
+                            <td align="right"><strong>Net Asset Value</strong></td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for investor_data in investors_data %}
+                        <tr>
+                            <td align="left">{{ investor_data.investor.name }}</td>
+                            <td align="center">{{ investor_data.fund_interest_called|percent:2 }}</td>
+                            <td align="right">{{ investor_data.investor_capital_calls }}</td>
+                            <td align="right">{{ investor_data.investor_distributions }}</td>
+                            <td align="right">{{ investor_data.investor_operating_income }}</td>
+                            <td align="right">{{ investor_data.investor_operating_expenses }}</td>
+                            <td align="right">{{ investor_data.investor_unrealised_gains_or_losses }}</td>
+                            <td align="right">{{ investor_data.investor_net_asset_value }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="total-row">
+                            <td><strong>Total</strong></td>
+                            <td align="center"><strong>{{ total_fund_interest_called|percent:2 }}</strong></td>
+                            <td align="right"><strong>{{ total_drawn_capital }}</strong></td>
+                            <td align="right"><strong>{{ total_distributions }}</strong></td>
+                            <td align="right"><strong>{{ total_operating_income }}</strong></td>
+                            <td align="right"><strong>{{ total_operating_expenses }}</strong></td>
+                            <td align="right"><strong>{{ total_unrealosed_gains_or_losses }}</strong></td>
+                            <td align="right"><strong>{{ total_net_asset_value }}</strong></td>
+                        </tr>
+                    </tbody>
+
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="portfolio">
+
+        <div class="row">
+            <div class="col-md-12 mt-10">
+                <table class="table">
+                    <colgroup>
+                        <col span="1" style="width: 18%;">
+                        <col span="1" style="width: 5%;">
+                        <col span="1" style="width: 5%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 4%;">
+                        <col span="1" style="width: 4%;">
+                    </colgroup>
+                    <thead class="border-bottom">
+                        <tr class="" style="font-weight:bold">
+                            <td align="left">Company name</td>
+                            <td align="center">Security Type</td>
+                            <td align="center">Initial Investment Date</td>
+                            <td align="right">Fund Commitment</td>
+                            <td align="right">Total Invested</td>
+                            <td align="right">Current Cost</td>
+                            <td align="right">Reported Value</td>
+                            <td align="center">Realised Proceeds</td>
+                            <td align="center">IRR</td>
+                            <td align="center">MOIC</td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% if investments %}
+                        {% for investment in investments %}
+                        <tr>
+                            <td align="left">{{investment.company}}</td>
+                            <td align="center">{{investment.instrument}}</td>
+                            <td align="center"></td>
+                            <td align="right">1{{investment.committed_amount}}</td>
+                            <td align="right">{{investment.invested_amount}}</td>
+                            <td align="right"></td>
+                            <td align="right"></td>
+                            <td align="center"></td>
+                            <td align="center">25%</td>
+                            <td align="center">2.0x</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td>This Fund has no investments</td></tr>
+                    {% endif%}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="performance">
+        <h5>Performance</h5>
+    </div>
+    
+    <div role="tabpanel" class="tab-pane fade" id="operations">
+        <h5>Operations</h5>
+    </div>
+
+</div>
+
+{% endblock content %}
