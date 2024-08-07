@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Capital Call</title>
+</head>
+<body>
+    <h1>Capital Call for Fund: {{ fund.name }}</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Submit</button>
+    </form>
+    
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Total</th>
+                {% for commitment in committed_capitals %}
+                <th>{{ commitment.investor.name }}</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                <th>Percentage</th>
+                <th>{{ total_committed }}</th>
+                {% for item in percentages %}
+                <th>{{ item.amount|floatformat:2 }} ({{ item.percentage|floatformat:2 }}%)</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                <th>Capital Drawn to Date</th>
+                <th>{{ total_drawn_sum }}</th>
+                {% for draw in total_drawn %}
+                <th>{{ draw.total_amount }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Add rows for calculated values and input forms -->
+        </tbody>
+    </table>
+</body>
+</html>

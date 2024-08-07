@@ -386,7 +386,9 @@
     </div>
     
     <div role="tabpanel" class="tab-pane fade" id="operations">
-        <h5>Operations</h5>
+
+        <a href="{% url 'fund_close' pk=fund.id %}" class="btn btn-sm btn-block btn-success">Process Fund Close</a>
+        <a href="{% url 'capital_call' pk=fund.id %}" class="btn btn-sm btn-block btn-success">Capital Call / Distribution</a>
     </div>
 
 </div>

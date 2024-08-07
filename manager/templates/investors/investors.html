@@ -72,7 +72,8 @@ Investors home
             </tr>
         </thead>
         <tbody>
-        {% for investor_data in investors_data %}
+        {% if investors_data %}
+            {% for investor_data in investors_data %}
             <tr class="border-bottom" onclick="window.location='{{investor_data.investor.get_absolute_url}}';"  style="cursor: pointer;">
                 <td>{{ investor_data.investor.name }}</td>
                 <td>{{ investor_data.investor.short_name }}</td>
@@ -85,7 +86,10 @@ Investors home
                     <a href="{% url 'delete_investor' pk=investor_data.investor.id %}" class="btn btn-sm btn-danger">Delete</a>
                 </td>
             </tr>
-        {% endfor %}
+            {% endfor %}
+        {% else %}
+            <tr><td>There are no investors to display</td></tr>
+        {% endif %}
         </tbody>
     </table>
 </div>

@@ -39,7 +39,7 @@ class Contact(models.Model):
     id_number = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=20)
     email_address = models.EmailField(max_length=100)
-    main_contact = models.BooleanField(default=False)
+    primary_contact = models.BooleanField(default=False)
     adv_board_rep = models.BooleanField(default=False)
     invest_comm_rep = models.BooleanField(default=False)
     reports = models.BooleanField(default=True)
@@ -104,13 +104,19 @@ class FundClose(models.Model):
         return str(self.fund) + ' | ' + str(self.investor) + ' | ' + str(self.series_number)
     
 class CallType(models.Model):
-    type = models.CharField(max_length=100)
+    name = models.CharField(max_length=100)
 
     def __str__(self):
-        return str(self.type)
+        return str(self.name)
+
+class ExpenseType(models.Model):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return str(self.type)  
 
 class DistributionType(models.Model):
-    type = models.CharField(max_length=100)
+    name = models.CharField(max_length=100)
 
     def __str__(self):
         return str(self.type)
@@ -132,7 +138,6 @@ class CommittedCapital(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12,decimal_places=2)
-    fund_interest = models.DecimalField(max_digits=4,decimal_places=3)
 
     def __str__(self):
         return str(self.fund) + ' | ' + str(self.investor)
@@ -149,12 +154,13 @@ class Distribution(models.Model):
         return str(self.fund) + ' | ' + str(self.notice)
 
 class CapitalCall(models.Model):
-    notice = models.ForeignKey(NoticeNumber,on_delete=models.CASCADE)
+    notice_number = models.ForeignKey(NoticeNumber,on_delete=models.CASCADE)
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
     call_type = models.ForeignKey(CallType,on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12,decimal_places=2)
     allocation_percentage = models.DecimalField(max_digits=3,decimal_places=2)
+    date = models.DateField(auto_now=True)
 
     def __str__(self):
         return str(self.fund) + ' | ' + str(self.notice)

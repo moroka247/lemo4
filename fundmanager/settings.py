@@ -91,8 +91,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'fundmanager',
         'HOST': 'localhost',
-        'USER': 'root',
-        'PASSWORD': 'root'
+        'USER': 'wise',
+        'PASSWORD': 'Wise7367@'
 
     }
 }

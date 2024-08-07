@@ -52,6 +52,9 @@ urlpatterns = [
     path('add_contact/', AddContact.as_view(), name='add_contact'),
     path('edit_contact/<int:pk>/', EditContact.as_view(), name='edit_contact'),
     path('delete_contact/<int:pk>/', DeleteContact.as_view(), name='delete_contact'),
+    path('fund/<int:pk>/commit/', CommittedCapitalCreateView.as_view(), name='fund_close'),
+    path('fund/<int:pk>/capital_call/', CapitalCallView.as_view(), name='capital_call'),
+    #path('fund/<int:pk>/commit/',FundCloseCreateForm.as_view(), name="fund_close")
 ]
 
 #pprint(urlpatterns)

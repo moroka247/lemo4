@@ -76,9 +76,9 @@ Investor details
                 <tr class="border-bottom"><td>Investor Category</td><td>{{investor.category}}</td></tr> 
                 <tr class="border-bottom"><td>Registration Number</td><td vertical-align: top>{{investor.reg_no}}</td></tr>
                 <tr class="border-bottom"><td>Business Address</td><td>{{investor.address}}<br>{{investor.city}}<br>{{investor.post_code}}</td></tr>
-                <tr class="border-bottom"><td>Key Contact Person</td><td>{{investor.key_contact}}</td></tr> 
-                <tr class="border-bottom"><td>Contact Phone Number</td><td>{{investor.phone}}</td></tr>
-                <tr class="border-bottom"><td>Email Address</td><td>{{investor.contact_email}}</td></tr>
+                <tr class="border-bottom"><td>Key Contact Person</td><td>{{primary_contact.name}}&nbsp;{{contact.surname}}</td></tr> 
+                <tr class="border-bottom"><td>Contact Phone Number</td><td>{{primary_contact.phone_number}}</td></tr>
+                <tr class="border-bottom"><td>Email Address</td><td>{{primary_contact.email_address}}</td></tr>
             </tbody>
         </table>
 
@@ -118,12 +118,13 @@ Investor details
                     <th style="text-align:center">Actions</th>
                 </thead>
                 <tbody>
-                    {% for contact in contacts %}
+                {% if investor_contacts %}
+                    {% for contact in investor_contacts %}
                         <tr onclick="window.location='#';"  style="cursor: pointer;">
                         <td>{{contact.name}}&nbsp;{{contact.surname}}</td>
                         <td align="center">{{contact.phone_number}}</td>
                         <td align="center">{{contact.email_address}}</td>
-                        <td align="center">{{contact.main_contact}}</td>
+                        <td align="center">{{contact.primary_contact}}</td>
                         <td align="center">{{contact.adv_board_rep}}</td>
                         <td align="center">{{contact.invest_comm_rep}}</td>
                         <td align="center">{{contact.reports}}</td>
@@ -140,7 +141,7 @@ Investor details
                                         <div class="modal-body">
                                             <form action="" method="post">
                                             {% csrf_token %}
-                                            {{contact_form}}
+                                            {{ form.as_p }}
                                             </form>
                                         </div>
                                         <div class="modal-footer">
@@ -155,6 +156,9 @@ Investor details
                         </td>
                         </tr>
                     {% endfor %}
+                {% else %}
+                    <tr><td>There are no contacts to display</td></tr>
+                {% endif %}
                 </tbody>
             </table>
 

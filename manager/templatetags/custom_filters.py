@@ -9,3 +9,10 @@ def percent(value, decimals=4):
         return f"{value * 100:.{decimals}f}%"
     except (TypeError, ValueError):
         return ''
+    
+@register.filter
+def div(value, arg):
+    try:
+        return float(value) / float(arg)
+    except (ValueError, ZeroDivisionError):
+        return None
