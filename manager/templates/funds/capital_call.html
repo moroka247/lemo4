@@ -1,43 +1,118 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Capital Call</title>
-</head>
-<body>
-    <h1>Capital Call for Fund: {{ fund.name }}</h1>
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% load custom_filters %}
+
+{% block title %}
+    Capital Call | {{ fund.name }}
+{% endblock title %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row my-5">
+        <div class="col-md-8"> <h4><b>Capital Call | {{ fund.name }}</b></h4></div>
+    
+        <div align="right" class="col-md-4">        
+            <a href="{% url 'funds' %}" class="btn btn-outline-success" style="height:30px;width:200px;padding:2px">
+                <i class="fas fa-step-backward"> Back to funds</i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
     <form method="post">
         {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Submit</button>
+
+        <!-- Date Input (Single Widget) -->
+        <div class="form-group">
+            <label for="id_date">Notice Date:</label>
+            {{ formset.forms.0.date }}
+        </div>
+
+        <!-- Capital Call Formset -->
+        <table class="table table-borderless table-sm" cellspacing="1px">
+            <thead class="border-bottom">
+                <tr class="" style="font-weight:bold">
+                    <th></th>
+                    <th style="text-align:right">Total</th>
+                    {% for account in capital_accounts %}
+                        <th style="text-align:right">{{ account.investor.name }}</th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <th>Committed Capital</th>
+                    <th style="text-align:right">{{ total_committed }}</th>
+                    {% for account in capital_accounts %}
+                        <th style="text-align:right">{{ account.commitment|floatformat:2 }}</th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <th>Percentage</th>
+                    <th style="text-align:right">{{ total_interests|percent:2 }}</th>
+                    {% for account in capital_accounts %}
+                    <th style="text-align:right">{{ account.fund_interest|percent:2 }}</th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <th>Capital Drawn to Date</th>
+                    <th style="text-align:right">{{ total_drawn_sum }}</th>
+                    {% for account in capital_accounts %}
+                    <th style="text-align:right">{{ account.drawn_amount }}</th>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <th>Undrawn Commitment</th>
+                    <th style="text-align:right">{{ total_undrawn_commitment|floatformat:2 }}</th>
+                    {% for account in capital_accounts %}
+                        <th style="text-align:right">{{ account.undrawn_commitment|floatformat:2 }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody id="formset-body">
+                {{ formset.management_form }}
+                {% for form in formset %}
+                    <tr class="form-row">
+                        <td>{{ form.call_type }}</td>
+                        <td>{{ form.amount }}</td>
+                        {% for commitment in committed_capitals %}
+                        <td><!-- Calculated value here --></td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="button" id="add-row" class="btn btn-success">Add Row</button>
+        <button type="submit" class="btn btn-primary">Submit</button>
     </form>
-    
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Description</th>
-                <th>Total</th>
-                {% for commitment in committed_capitals %}
-                <th>{{ commitment.investor.name }}</th>
-                {% endfor %}
-            </tr>
-            <tr>
-                <th>Percentage</th>
-                <th>{{ total_committed }}</th>
-                {% for item in percentages %}
-                <th>{{ item.amount|floatformat:2 }} ({{ item.percentage|floatformat:2 }}%)</th>
-                {% endfor %}
-            </tr>
-            <tr>
-                <th>Capital Drawn to Date</th>
-                <th>{{ total_drawn_sum }}</th>
-                {% for draw in total_drawn %}
-                <th>{{ draw.total_amount }}</th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Add rows for calculated values and input forms -->
-        </tbody>
-    </table>
-</body>
-</html>
+</div>
+
+<script>
+document.getElementById('add-row').addEventListener('click', function() {
+    let formsetBody = document.getElementById('formset-body');
+    let formRow = formsetBody.querySelector('.form-row');
+
+    if (!formRow) {
+        console.error('No .form-row element found to clone.');
+        return;
+    }
+
+    let totalForms = document.getElementById('id_form-TOTAL_FORMS');
+    let formCount = parseInt(totalForms.value);
+
+    let newRow = formRow.cloneNode(true);
+
+    newRow.querySelectorAll('input, select').forEach((input) => {
+        let name = input.name.replace(/-\d+-/, `-${formCount}-`);
+        let id = input.id.replace(/-\d+-/, `-${formCount}-`);
+        input.name = name;
+        input.id = id;
+        input.value = '';  // Clear the value
+    });
+
+    formsetBody.appendChild(newRow);
+    totalForms.value = formCount + 1;
+});
+</script>
+
+{% endblock content %}

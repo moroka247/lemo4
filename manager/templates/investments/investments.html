@@ -46,8 +46,8 @@ Investments home
                         <td align="right">{{investment.invested_amount}}</td>
                         <td align="center">Performing</td>
                         <td align="center">
-                            <a href="{% url 'edit_investment' pk=investment.id %}" class="btn btn-sm btn-success">Disbursement</a>
-                            <a href="{% url 'delete_investment' pk=investment.id %}" class="btn btn-sm btn-danger">Realisations</a>
+                            <a href="{% url 'edit_investment' pk=investment.id %}" class="btn btn-sm btn-success">Update</a>
+                            <a href="{% url 'delete_investment' pk=investment.id %}" class="btn btn-sm btn-danger">Delete</a>
                         </td>
                     </tr>
                 {% endfor %}

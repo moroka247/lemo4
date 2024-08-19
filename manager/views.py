@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
 from django.urls import reverse_lazy
-from django.db.models import Sum
+from django.db.models import Sum, Max
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView , TemplateView, FormView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
@@ -313,6 +313,11 @@ class CompaniesList(ListView):
     template_name = 'companies/companies.html'
     context_object_name = 'companies'
 
+class CompanyDetail(DetailView):
+    model = Investment
+    template_name = 'companies/company_overview.html'
+    context_object_name = 'company'
+
 # CRUD Views
 class AddFund(CreateView):
     model = Fund
@@ -438,6 +443,29 @@ class DeleteContact(DeleteView):
     template_name = "contacts/confirm_delete.html"
     success_url = reverse_lazy('contacts')
 
+class AddCompany(CreateView):
+    template_name = 'companies/add_company.html'
+    form_class = CompanyForm
+    success_url = reverse_lazy('companies')
+
+    def form_valid(self, form):
+        form.save()
+        return super().form_valid(form)
+
+class EditCompany(UpdateView):
+    model = Company
+    form_class = CompanyForm
+    template_name = 'companies/edit_company.html'
+    pk_url_kwarg = 'pk'
+    success_url = reverse_lazy('companies')
+
+class DeleteCompany(DeleteView):
+    model = Company
+    pk_url_kwarg = 'pk'
+    template_name = "companies/confirm_delete.html"
+    success_url = reverse_lazy('companies')  
+
+#Calculation and other views
 class CommittedCapitalCreateView(FormView):
     form_class = CommittedCapitalFormSet
     template_name = 'funds/fund_close.html'
@@ -488,79 +516,105 @@ class FundCloseCreateForm(FormView):
         messages.success(self.request, 'Fund close procesed successfully.')
         return super().form_valid(form)
 
+def generate_unique_number(fund):
+    max_number = NoticeNumber.objects.filter(fund=fund).aggregate(Max('number'))['number__max']
+    if max_number is not None:
+        return max_number + 1
+    else:
+        return 1  # Start at 1 if there are no existing entries
+
 class CapitalCallView(TemplateView, FormView):
     template_name = 'funds/capital_call.html'
     form_class = CapitalCallForm
-    
+    success_url = reverse_lazy('funds')    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         fund_id = self.kwargs['pk']
         fund = Fund.objects.get(id=fund_id)
+
+        # Get commitment and called capital data for Fund
         committed_capitals = CommittedCapital.objects.filter(fund=fund)
         total_committed = committed_capitals.aggregate(Sum('amount'))['amount__sum']
-        capital_calls = CapitalCall.objects.filter(fund=fund).order_by('date')
+        capital_calls = CapitalCall.objects.filter(fund=fund)
         total_drawn = capital_calls.values('investor').annotate(total_amount=Sum('amount'))
 
+        formset = CapitalCallFormSet(queryset=CapitalCall.objects.none())
+
+        # Calculate total drawn sum
         total_drawn_sum = sum([draw['total_amount'] for draw in total_drawn])
 
-        percentages = []
+        # Calculate undrawn commitments
+        total_undrawn_commitment = total_committed - total_drawn_sum if total_committed and total_drawn_sum else total_committed
+
+        capital_accounts = []
+        total_interests = 0
+
         for commitment in committed_capitals:
-            percentage = (commitment.amount / total_committed) * 100 if total_committed else 0
-            percentages.append({
+            drawn_amount = next((draw['total_amount'] for draw in total_drawn if draw['investor'] == commitment.investor.id), 0)
+            undrawn_commitment = commitment.amount - drawn_amount
+            fund_interest = (commitment.amount / total_committed) if total_committed else 0
+            total_interests += fund_interest
+            capital_accounts.append({
                 'investor': commitment.investor,
-                'amount': commitment.amount,
-                'percentage': percentage,
+                'commitment': commitment.amount,
+                'drawn_amount': drawn_amount,
+                'undrawn_commitment': undrawn_commitment,
+                'fund_interest': fund_interest,
             })
 
         context.update({
+            'formset': formset,
             'fund': fund,
-            'committed_capitals': committed_capitals,
             'total_committed': total_committed,
-            'total_drawn': total_drawn,
             'total_drawn_sum': total_drawn_sum,
-            'capital_calls': capital_calls,
-            'percentages': percentages,
+            'total_interests': total_interests,
+            'total_undrawn_commitment': total_undrawn_commitment,
+            'capital_accounts': capital_accounts,
         })
         return context
-
-    def form_valid(self, form):
-        fund_id = self.kwargs['fund_id']
-        fund = Fund.objects.get(id=fund_id)
-        committed_capitals = CommittedCapital.objects.filter(fund=fund)
-        total_committed = committed_capitals.aggregate(Sum('amount'))['amount__sum']
-        
-        call_type = form.cleaned_data['call_type']
-        amount = form.cleaned_data['amount']
-        
-        if call_type.name == 'Management Fees':
-            for commitment in committed_capitals:
-                CapitalCall.objects.create(
-                    fund=fund,
-                    call_type=call_type,
-                    notice_number=NoticeNumber.objects.create(number="auto_generated_number"),
-                    amount=commitment.amount * fund.man_fee / 100,
-                    investor=commitment.investor
-                )
-        else:
-            for commitment in committed_capitals:
-                proportionate_amount = (commitment.amount / total_committed) * amount
-                CapitalCall.objects.create(
-                    fund=fund,
-                    call_type=call_type,
-                    notice_number=NoticeNumber.objects.create(number="auto_generated_number"),
-                    amount=proportionate_amount,
-                    investor=commitment.investor
-                )
-                
-        return redirect(reverse('capital_call_view', kwargs={'fund_id': fund.id}))
-
-    def get(self, request, *args, **kwargs):
-        self.object = None
-        return super().get(request, *args, **kwargs)
-
+    
     def post(self, request, *args, **kwargs):
-        self.object = None
-        return super().post(request, *args, **kwargs)
+        fund_id = self.kwargs['pk']
+        fund = Fund.objects.get(id=fund_id)
+        formset = CapitalCallFormSet(request.POST)
+
+        if formset.is_valid():
+            print("Formset is valid")
+            # Generate the notice number based on the last record for the fund
+            last_notice_number = CapitalCall.objects.filter(fund=fund).order_by('notice_number').last()
+            new_notice_number = (last_notice_number.notice_number + 1) if last_notice_number else 1
+            notice_date = formset.forms[0].cleaned_data['date']  # Use the date from the first form
+
+            for form in formset:
+                form.cleaned_data['date'] = notice_date
+                if form.cleaned_data:
+                    call_type = form.cleaned_data['call_type']
+                    amount = form.cleaned_data['amount']
+
+                    committed_capitals = CommittedCapital.objects.filter(fund=fund)
+                    total_committed = committed_capitals.aggregate(Sum('amount'))['amount__sum']
+
+            for commitment in committed_capitals:
+                if call_type.name in ['Management Fees', 'Advisory Fees']:
+                    capital_call_amount = commitment.amount * fund.man_fee / 4
+                else:
+                    capital_call_amount = (commitment.amount / total_committed) * amount
+
+                CapitalCall.objects.create(
+                    notice_number=new_notice_number,
+                    date=notice_date,
+                    fund=fund,
+                    investor=commitment.investor,
+                    call_type=call_type,
+                    amount=capital_call_amount
+                )
+
+            return redirect(reverse('capital_call', kwargs={'pk': fund.id}))
+        else:
+            print("Formset errors", formset.errors)
+        # If the formset is not valid, re-render the page with errors
+        return self.render_to_response(self.get_context_data(formset=formset))
 
 class CapitalCallCreateView(FormView):
     form_class = CapitalCallFormSet

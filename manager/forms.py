@@ -1,6 +1,6 @@
 from django import forms
-from django.forms import inlineformset_factory, modelformset_factory
-from . models import Investor, Fund, Investment, CommittedCapital, Contact, CapitalCall, NoticeNumber
+from django.forms import inlineformset_factory, modelformset_factory, BaseFormSet
+from . models import Investor, Fund, Investment, Company, CommittedCapital, Contact, CapitalCall, NoticeNumber, CallType
 
 class InvestorForm(forms.ModelForm):
     class Meta:
@@ -16,7 +16,12 @@ class FundForm(forms.ModelForm):
 class InvestmentForm(forms.ModelForm):
     class Meta:
         model = Investment
-        fields = ['company','fund','instrument','committed_amount','invested_amount']
+        fields = ['company','fund','instrument','committed_amount']
+
+class CompanyForm(forms.ModelForm):
+    class Meta:
+        model = Company
+        fields = ['name','short_name','registration_no','description','industry','country']
 
 class ContactForm(forms.ModelForm):
     class Meta:
@@ -32,31 +37,24 @@ class CommittedCapitalForm(forms.ModelForm):
 
 CommittedCapitalFormSet = modelformset_factory(CommittedCapital, form=CommittedCapitalForm, extra=1, max_num=20, can_delete=True)
 
-class NoticeNumberForm(forms.ModelForm):
-    class Meta:
-        model = NoticeNumber
-        fields = ['number']
-
-NoticeNumberFormSet = modelformset_factory(NoticeNumber, form=NoticeNumberForm, extra=0, max_num=1, can_delete=False)
-
 class CapitalCallForm(forms.ModelForm):
     class Meta:
         model = CapitalCall
-        fields = ['call_type', 'amount']
+        fields = ['date', 'call_type', 'amount']
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date'}),
+        }
 
-CapitalCallFormSet = modelformset_factory(CapitalCall, form=CapitalCallForm, extra=1, max_num=20, can_delete=True)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['call_type'].queryset = CallType.objects.all()
 
-class DateForm(forms.Form):
-    date = forms.DateField(required=True)
-
-    def clean(self):
-        cleaned_data = super().clean()
-        date = cleaned_data.get('date')    
-
-        if not date:
-            raise forms.ValidationError('Please select date.')
-    
-        return cleaned_data
+CapitalCallFormSet = modelformset_factory(
+    CapitalCall,
+    form=CapitalCallForm,
+    extra=1,
+    can_delete=True
+)
 
 class FundCloseForm(forms.Form):
  

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}
+Companies home
+{% endblock title %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row my-5">
+        <div class="col-md-8"> <h5><b>COMPANIES</b></h5></div>
+    
+        <div align="right" class="col-md-4">        
+            <a href="{% url 'home' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
+                <i class="fas fa-home"> Home</i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container shadow">
+    <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" href="{% url 'add_company' %}">
+        <i class="fas fa-plus"> Add New Company</i>
+    </a>
+
+    <table class="table table-borderless table-hover table-sm" cellspacing="1px">
+        <thead class="border-bottom">
+            <tr class="" style="font-weight:bold">
+                <td>Company name</td>
+                <td>Registration No.</td>
+                <td align="center">Industry</td>
+                <td align="right">Country</td>
+                <td align="center">Actions</td>
+            </tr>
+        </thead>
+        <tbody>
+            {% if companies %}
+                {% for company in companies %}
+                    <tr class="border-bottom" onclick="window.location='{{ company.get_absolute_url }}';"  style="cursor: pointer;">
+                        <td>{{company.name}}</td>
+                        <td>{{ company.registration_no }}</td>
+                        <td align="center">{{ company.industry }}</td>
+                        <td align="right">{{ company.country }}</td>
+                        <td align="center">
+                            <a href="{% url 'edit_company' pk=company.id %}" class="btn btn-sm btn-success">Update</a>
+                            <a href="{% url 'delete_company' pk=company.id %}" class="btn btn-sm btn-danger">Delete</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <td>There are no companies to display</td>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}

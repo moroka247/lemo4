@@ -33,6 +33,7 @@ Contacts home
                 <td>Organisation</td>
                 <td>Phone Number</td>
                 <td>Contact Email</td>
+                <td align="center">Actions</td>
             </tr>
         </thead>
         <tbody>
@@ -43,6 +44,9 @@ Contacts home
                 <td>{{ contact.phone_number }}</td>
                 <td>{{ contact.email_address }}</td>
                 <td align="center">
+                    <a href="{% url 'edit_contact' pk=contact.id %}" class="btn btn-sm btn-success">Update</a>
+                    <a href="{% url 'delete_contact' pk=contact.id %}" class="btn btn-sm btn-danger">Delete</a>
+                </td>
             </tr>
         {% endfor %}
         </tbody>

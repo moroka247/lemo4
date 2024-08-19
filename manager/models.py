@@ -129,10 +129,12 @@ class AllocationRule(models.Model):
         return str(self.name)
 
 class NoticeNumber(models.Model):
-    number = models.SmallIntegerField(auto_created=True, primary_key=True)
+    date = models.DateField(auto_now=False)
+    fund = models.ForeignKey(Fund, on_delete=models.CASCADE)
+    number = models.SmallIntegerField(default=500)
 
     def __str__(self):
-        return str(self.number)
+        return str(self.number) + ' | ' + str(self.fund)
 
 class CommittedCapital(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
@@ -143,7 +145,8 @@ class CommittedCapital(models.Model):
         return str(self.fund) + ' | ' + str(self.investor)
 
 class Distribution(models.Model):
-    notice = models.ForeignKey(NoticeNumber,on_delete=models.CASCADE)
+    notice_number = models.IntegerField(null=True)
+    date = models.DateField(auto_now=False, null=True)
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
     distribution_type = models.ForeignKey(DistributionType,on_delete=models.CASCADE)
@@ -151,19 +154,18 @@ class Distribution(models.Model):
     allocation_percentage = models.DecimalField(max_digits=3,decimal_places=2)
 
     def __str__(self):
-        return str(self.fund) + ' | ' + str(self.notice)
+        return str(self.fund) + ' | ' + str(self.notice_number) + ' | ' + str(self.distribution_type)
 
 class CapitalCall(models.Model):
-    notice_number = models.ForeignKey(NoticeNumber,on_delete=models.CASCADE)
+    notice_number = models.IntegerField(null=True)
+    date = models.DateField(auto_now=False, null=True)
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
     call_type = models.ForeignKey(CallType,on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12,decimal_places=2)
-    allocation_percentage = models.DecimalField(max_digits=3,decimal_places=2)
-    date = models.DateField(auto_now=True)
 
     def __str__(self):
-        return str(self.fund) + ' | ' + str(self.notice)
+        return str(self.fund) + ' | ' + str(self.notice_number) + ' | ' + str(self.call_type)
 
 class Instrument(models.Model):
     name = models.CharField(max_length=255)
@@ -194,6 +196,9 @@ class Company(models.Model):
 
     def __str__(self):
         return str(self.name)
+    
+    def get_absolute_url(self):
+        return reverse('company_detail', kwargs={'pk':self.pk})
 
 class Investment(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE)
