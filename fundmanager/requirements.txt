@@ -1,0 +1,9 @@
+django>=4.0
+pillow
+djangorestframework
+mysqlclient
+requests
+crispy-bootstrap4
+django-cors-headers
+debug-toolbar
+upgrade pip
