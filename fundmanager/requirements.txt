@@ -1,9 +1,18 @@
-django>=4.0
-pillow
-djangorestframework
-mysqlclient
-requests
+asgiref
 crispy-bootstrap4
+Django
 django-cors-headers
-debug-toolbar
-upgrade pip
+django-crispy-forms
+django-debug-toolbar
+django-filter
+djangorestframework
+drf-nested-routers
+idna
+mysqlclient
+pillow
+pip
+requests
+setuptools
+sqlparse
+tzdata
+urllib3

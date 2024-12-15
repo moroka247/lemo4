@@ -103,7 +103,7 @@ DATABASES = {
         'NAME': 'fundmanager',
         'HOST': 'localhost',
         'USER': 'root',
-        'PASSWORD': 'root'
+        'PASSWORD': 'Nn522H'
 
     }
 }
