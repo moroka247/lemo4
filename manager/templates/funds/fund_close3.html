@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+
+{% block title %}
+Fund Close: {{ fund.name }}
+{% endblock title %}
+
+{% block content %}
+
+<div class="container">
+    <h4>Committed Capital to {{ fund.name }}</h4>
+
+    <!-- Input Form Section -->
+    <div class="row my-5">
+        <div class="col-md-8"> <!-- Reduced width to half of the page -->
+            <form id="input-form" method="post">
+                {% csrf_token %}
+
+                <div class="form-container">
+                    <!-- Input Form Header -->
+                    <div class="form-header">
+                        <div class="form-header-item wide">Investor</div>
+                        <div class="form-header-item narrow">Amount</div>
+                        <div class="form-header-item narrow">Actions</div>
+                    </div>
+
+                    <!-- Input Form Row -->
+                    <div class="form-row">
+                        <div class="form-item wide">
+                            {{ formset.empty_form.investor }}
+                        </div>
+                        <div class="form-item narrow">
+                            {{ formset.empty_form.amount }}
+                        </div>
+                        <div class="form-item narrow">
+                            <button type="button" class="btn btn-sm btn-secondary" id="add-form">+</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <p id="message" style="color: red; display: none;">The investor has already been added below. To edit the investor, it must first be removed from the summary below.</p>
+        </div>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="row my-5">
+        <div class="col-md-12">
+            <h5>Summary</h5>
+            <div class="form-container">
+                <!-- Summary Header Row -->
+                <div class="form-header">
+                    <div class="form-header-item wide">Investor</div>
+                    <div class="form-header-item narrow">Amount</div>
+                    <div class="form-header-item narrow">Percentage</div>
+                    <div class="form-header-item narrow">Actions</div>
+                </div>
+
+                <!-- Summary Rows -->
+                <div id="summary-rows">
+                    <!-- Rows will be dynamically added here -->
+                </div>
+
+                <!-- Total Row -->
+                <div class="form-row total-row">
+                    <div class="form-item wide">Total</div>
+                    <div class="form-item narrow" id="total-amount">0.00</div>
+                    <div class="form-item narrow"></div>
+                    <div class="form-item narrow"></div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="form-actions">
+                    <button type="button" class="btn btn-sm btn-success" id="submit-summary">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-header, .form-row {
+        display: flex;
+        flex-direction: row;
+        margin-bottom: 5px;
+    }
+
+    .form-header-item, .form-item {
+        padding: 8px;
+        border: 1px solid #ddd;
+        box-sizing: border-box;
+    }
+
+    .form-header-item {
+        font-weight: bold;
+        background-color: #417a59; /* Updated background color */
+        color: white; /* Updated text color */
+    }
+
+    .form-header-item.wide, .form-item.wide {
+        flex: 4; /* Make the first column wider */
+    }
+
+    .form-header-item.narrow, .form-item.narrow {
+        flex: 1; /* Make the other columns narrower */
+    }
+
+    .form-actions {
+        margin-top: 10px;
+    }
+
+    .form-actions button {
+        margin-right: 5px;
+    }
+
+    .total-row {
+        font-weight: bold;
+        background-color: #f4f4f4;
+    }
+
+    .total-row .form-item {
+        border: 1px solid #ddd;
+    }
+
+    .summary-row .form-item {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+
+    .summary-row {
+        display: flex;
+        flex-direction: row;
+        margin-bottom: 5px;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const addButton = document.getElementById('add-form');
+        const inputForm = document.getElementById('input-form');
+        const summaryRows = document.getElementById('summary-rows');
+        const totalAmountElement = document.getElementById('total-amount');
+        const investorField = inputForm.querySelector('select[name$="investor"]');
+        const amountField = inputForm.querySelector('input[name$="amount"]');
+        const messageElement = document.getElementById('message');
+        let totalAmount = 0;
+        let existingInvestors = new Set();
+
+        function calculateTotal() {
+            totalAmount = 0;
+            document.querySelectorAll('#summary-rows .form-item.narrow.amount').forEach(function (item) {
+                const value = parseFloat(item.textContent) || 0;
+                totalAmount += value;
+            });
+            totalAmountElement.textContent = totalAmount.toFixed(2);
+
+            // Update percentages
+            document.querySelectorAll('#summary-rows .summary-row').forEach(function (row) {
+                const amountElement = row.querySelector('.form-item.narrow.amount');
+                const amount = parseFloat(amountElement.textContent) || 0;
+                const percentage = totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(2) + '%' : '0.00%';
+                amountElement.nextElementSibling.textContent = percentage;
+            });
+        }
+
+        function addToSummary(investor, amount) {
+            if (existingInvestors.has(investor)) {
+                messageElement.style.display = 'block';
+                return;
+            } else {
+                messageElement.style.display = 'none';
+            }
+
+            const summaryRow = document.createElement('div');
+            summaryRow.className = 'form-row summary-row';
+            summaryRow.innerHTML = `
+                <div class="form-item wide">${investor}</div>
+                <div class="form-item narrow amount">${amount}</div>
+                <div class="form-item narrow">0.00%</div>
+                <div class="form-item narrow">
+                    <button type="button" class="btn btn-sm btn-danger remove-row">-</button>
+                </div>
+            `;
+            summaryRows.appendChild(summaryRow);
+            existingInvestors.add(investor);
+            calculateTotal();
+        }
+
+        addButton.addEventListener('click', function () {
+            const investor = investorField.options[investorField.selectedIndex].text;
+            const amount = parseFloat(amountField.value).toFixed(2);
+
+            if (!investor || isNaN(amount) || amount <= 0) {
+                alert('Please select an investor and enter a valid amount.');
+                return;
+            }
+
+            addToSummary(investor, amount);
+            // Clear input fields
+            investorField.value = '';
+            amountField.value = '';
+        });
+
+        summaryRows.addEventListener('click', function (event) {
+            if (event.target.classList.contains('remove-row')) {
+                const row = event.target.closest('.summary-row');
+                const investorName = row.querySelector('.form-item.wide').textContent;
+                row.remove();
+                existingInvestors.delete(investorName);
+                calculateTotal();
+            }
+        });
+
+        document.getElementById('submit-summary').addEventListener('click', function () {
+            const data = Array.from(document.querySelectorAll('#summary-rows .summary-row')).map(row => {
+                return {
+                    investor: row.querySelector('.form-item.wide').textContent,
+                    amount: row.querySelector('.form-item.narrow.amount').textContent,
+                };
+            });
+
+            fetch(`/fund/{{fund.id}}/commit/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({data: data})
+            })
+            .then(response => response.json())
+            .then(result => {
+                alert('Data submitted successfully!');
+                // Handle success (e.g., redirect or refresh)
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to submit data.');
+            });
+        });
+    });
+</script>
+
+{% endblock content %}

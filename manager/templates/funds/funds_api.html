@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}
+Funds Home
+{% endblock title %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row my-5">
+        <div class="col-md-8">
+            <h5><b>FUNDS</b></h5>
+        </div>
+        <div align="right" class="col-md-4">        
+            <a href="{% url 'home' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
+                <i class="fas fa-home"> Home</i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container shadow">
+    <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" href="{% url 'add_fund' %}">
+        <i class="fas fa-plus"> Add New Fund</i>
+    </a>
+
+    <table class="table table-borderless table-hover table-sm" cellspacing="1px">
+        <thead class="border-bottom">
+            <tr style="font-weight:bold">
+                <td>Fund Name</td>
+                <td align="center">Currency</td>
+                <td align="right">Committed Capital</td>
+                <td align="right">Drawn Down</td>
+                <td align="right">Undrawn</td>
+                <td align="center">Actions</td>
+            </tr>
+        </thead>
+        <tbody id="fundsTableBody">
+            <tr><td colspan="6">Loading funds...</td></tr>
+        </tbody>
+    </table>
+
+    <!-- Pagination controls -->
+    <div id="paginationControls" class="my-3 text-center">
+        <button id="loadMoreButton" class="btn btn-primary" style="display:none;">Load More</button>
+    </div>
+</div>
+
+<script>
+    // URL of the API endpoint, initially set to the first page
+    let apiUrl = 'http://127.0.0.1:8000/api/funds-list/';
+
+    // Function to fetch funds data from API and display it
+    async function fetchFundsData() {
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+            const data = await response.json();
+            console.log(data); // Debugging output to check the received data
+
+            const funds = data.results;  // Assuming 'results' key contains fund items
+            const tableBody = document.getElementById('fundsTableBody');
+
+            // Clear the loading message if this is the first page
+            if (apiUrl === 'http://127.0.0.1:8000/api/funds-list') {
+                tableBody.innerHTML = '';
+            }
+
+            // Display funds data or a no-funds message
+            if (funds.length === 0 && apiUrl === 'http://127.0.0.1:8000/api/funds-list') {
+                tableBody.innerHTML = '<tr><td colspan="6">There are no funds to display</td></tr>';
+            } else {
+                funds.forEach(fundData => {
+                    const row = document.createElement('tr');
+                    row.classList.add('border-bottom');
+                    row.style.cursor = 'pointer';
+
+                    row.innerHTML = `
+                        <td onclick="window.location='${fundData.fund.get_absolute_url}';">${fundData.fund.name}</td>
+                        <td align="center">${fundData.fund.currency}</td>
+                        <td align="right">${fundData.committed_capital}</td>
+                        <td align="right">${fundData.called_capital}</td>
+                        <td align="right">${fundData.undrawn_commitment}</td>
+                        <td align="center">
+                            <a href="{% url 'edit_fund' pk=0 %}".replace('0', fundData.fund.id) class="btn btn-sm btn-block btn-success">Update</a>
+                            <a href="{% url 'delete_fund' pk=0 %}".replace('0', fundData.fund.id) class="btn btn-sm btn-block btn-danger">Delete</a>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            // Handle pagination: check if there's a next page and set up the Load More button
+            const loadMoreButton = document.getElementById('loadMoreButton');
+            if (data.next) {
+                apiUrl = data.next;  // Set URL to the next page
+                loadMoreButton.style.display = 'inline-block';  // Show Load More button
+            } else {
+                loadMoreButton.style.display = 'none';  // Hide Load More button if no more pages
+            }
+
+        } catch (error) {
+            console.error('Error fetching funds:', error);
+            document.getElementById('fundsTableBody').innerHTML = '<tr><td colspan="6">Failed to load funds data</td></tr>';
+        }
+    }
+
+    // Event listener to load more data when "Load More" button is clicked
+    document.getElementById('loadMoreButton').addEventListener('click', fetchFundsData);
+
+    // Call the function to load the first page of data when the page loads
+    document.addEventListener('DOMContentLoaded', fetchFundsData);
+</script>
+
+{% endblock content %}

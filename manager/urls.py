@@ -1,8 +1,12 @@
+import debug_toolbar
+from django.conf import settings
+from django.conf.urls.static import static
 from pprint import pprint
 from rest_framework_nested import routers
 from django.urls import path, include
 from . import views
 from . views import *
+
 
 router = routers.DefaultRouter()
 router.register('funds-list', views.FundViewSet, basename='funds-list')
@@ -32,12 +36,14 @@ router.register('instrument', views.InstrumentViewSet, basename='instrument')
 urlpatterns = [
     path('api/',include(router.urls)),
     path('', HomePageView.as_view(), name='home'),
+    path('__debug__/', include(debug_toolbar.urls)),
     # Funds
     path('funds/', FundsList.as_view(), name='funds'),
     path('funds/<int:pk>', FundDetail.as_view(), name='fund_detail'),
     path('add_fund/', AddFund.as_view(), name='add_fund'),
     path('edit_fund/<int:pk>/', EditFund.as_view(), name='edit_fund'),
     path('delete_fund/<int:pk>/', DeleteFund.as_view(), name='delete_fund'),
+    #path('fund/<int:pk>/commit/', CommittedCapitalSubmitView.as_view(), name='fund_close'),
     path('fund/<int:pk>/commit/', CommittedCapitalCreateView.as_view(), name='fund_close'),
     path('fund/<int:pk>/capital_call/', CapitalCallView.as_view(), name='capital_call'),
     # Investors
@@ -63,6 +69,6 @@ urlpatterns = [
     path('add_contact/', AddContact.as_view(), name='add_contact'),
     path('edit_contact/<int:pk>/', EditContact.as_view(), name='edit_contact'),
     path('delete_contact/<int:pk>/', DeleteContact.as_view(), name='delete_contact'),
-]
+]  + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 #pprint(urlpatterns)

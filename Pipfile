@@ -13,6 +13,8 @@ django-filter = "*"
 requests = "*"
 django-crispy-forms = "*"
 crispy-bootstrap4 = "*"
+django-debug-toolbar = "*"
+django-cors-headers = "*"
 
 [dev-packages]
 

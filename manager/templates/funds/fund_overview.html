@@ -188,7 +188,7 @@
 
     <div role="tabpanel" class="tab-pane fade" id="salient_terms">
 
-        <div class="container shadow">
+        <div class="container">
 
             <div class="col-md-4 my-3">
 
@@ -387,8 +387,11 @@
     
     <div role="tabpanel" class="tab-pane fade" id="operations">
 
-        <a href="{% url 'fund_close' pk=fund.id %}" class="btn btn-sm btn-block btn-success">Process Fund Close</a>
-        <a href="{% url 'capital_call' pk=fund.id %}" class="btn btn-sm btn-block btn-success">Capital Call / Distribution</a>
+        <a class="btn btn-outline-success btn-sm btn-sm w-100 my-2 btn-bold" href="{% url 'fund_close' pk=fund.id %}" class="btn btn-sm btn-block btn-success">Fund Close</a>
+        <a class="btn btn-outline-success  btn-sm btn-sm w-100 my-2 btn-bold" href="{% url 'capital_call' pk=fund.id %}" class="btn btn-sm btn-block btn-success">Capital Call</a>
+        <a class="btn btn-outline-success  btn-sm btn-sm w-100 my-2 btn-bold" href="#" class="btn btn-sm btn-block btn-success">Distribution</a>
+        <a class="btn btn-outline-success  btn-sm btn-sm w-100 my-2 btn-bold" href="#" class="btn btn-sm btn-block btn-success">Disbursement</a>
+        <a class="btn btn-outline-success  btn-sm btn-sm w-100 my-2 btn-bold" href="#" class="btn btn-sm btn-block btn-success">Proceeds</a>
     </div>
 
 </div>

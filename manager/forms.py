@@ -35,7 +35,7 @@ class CommittedCapitalForm(forms.ModelForm):
         model = CommittedCapital
         fields = ['investor', 'amount']
 
-CommittedCapitalFormSet = modelformset_factory(CommittedCapital, form=CommittedCapitalForm, extra=1, max_num=20, can_delete=True)
+CommittedCapitalFormSet = modelformset_factory(CommittedCapital, form=CommittedCapitalForm, extra=0)
 
 class CapitalCallForm(forms.ModelForm):
     class Meta:

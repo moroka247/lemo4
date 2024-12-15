@@ -19,9 +19,9 @@ Investor details
     </div>
 </div>
 
-<div class="row">
+<div class="row d-flex align-items-stretch">
 	<div class="col-md mt-2">
-		<div class="card card-body"  background-color="lightblue">
+		<div class="card card-body h-100 custom-background"  style="background-color: #c1e4cb;">
 			<h4 style="font-weight:bold">{{investor}}</h4>
 			<hr>
 			<a class="btn btn-outline-success  btn-sm btn-block" href="#"><b>Update Investor</b></a>
@@ -30,16 +30,16 @@ Investor details
 	</div>
 
 	<div class="col-md mt-2">
-		<div class="card card-body">
+		<div class="card card-body h-100 custom-background" style="background-color: #c1e4cb;">
 			<h4 style="font-weight:bold">Contact Information</h4>
 			<hr>
-			<p>Email: {{investor.contact_email}}</p>
-			<p>Phone: {{investor.phone}}</p>
+			<p>Email: {{primary_contact.email_address}}</p>
+			<p>Phone: {{primary_contact.phone_number}}</p>
 		</div>
 	</div>
 
 	<div class="col-md mt-2">
-		<div class="card card-body">
+		<div class="card card-body h-100 custom-background" style="background-color: #c1e4cb;">
 			<h4 style="font-weight:bold">Fund Commitments</h4>
 			<hr>
 			<h1 style="text-align: center;padding: 7px; font-weight:bold">R20M</h1>
@@ -76,7 +76,7 @@ Investor details
                 <tr class="border-bottom"><td>Investor Category</td><td>{{investor.category}}</td></tr> 
                 <tr class="border-bottom"><td>Registration Number</td><td vertical-align: top>{{investor.reg_no}}</td></tr>
                 <tr class="border-bottom"><td>Business Address</td><td>{{investor.address}}<br>{{investor.city}}<br>{{investor.post_code}}</td></tr>
-                <tr class="border-bottom"><td>Key Contact Person</td><td>{{primary_contact.name}}&nbsp;{{contact.surname}}</td></tr> 
+                <tr class="border-bottom"><td>Primary Contact Person</td><td>{{primary_contact.name}}&nbsp;{{primary_contact.surname}}</td></tr> 
                 <tr class="border-bottom"><td>Contact Phone Number</td><td>{{primary_contact.phone_number}}</td></tr>
                 <tr class="border-bottom"><td>Email Address</td><td>{{primary_contact.email_address}}</td></tr>
             </tbody>

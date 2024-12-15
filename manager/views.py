@@ -1,11 +1,12 @@
 from django.forms import BaseModelForm
 from django.http import HttpResponse
+from django.http import JsonResponse
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.db.models import Sum, Max
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView , TemplateView, FormView
+from django.views.generic import View, ListView, DetailView, CreateView, UpdateView, DeleteView , TemplateView, FormView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.viewsets import ModelViewSet
@@ -17,6 +18,7 @@ from .models import *
 from .serializers import *
 from .forms import *
 import requests
+import json
 from decimal import Decimal
 
 # API Views
@@ -468,7 +470,7 @@ class DeleteCompany(DeleteView):
 #Calculation and other views
 class CommittedCapitalCreateView(FormView):
     form_class = CommittedCapitalFormSet
-    template_name = 'funds/fund_close.html'
+    template_name = 'funds/fund_close4.html'
     success_url = reverse_lazy('funds')
 
     def get_context_data(self, **kwargs):
@@ -489,32 +491,61 @@ class CommittedCapitalCreateView(FormView):
             for instance in instances:
                 instance.fund = fund
                 instance.save()
+
+            # Handle summary data
+            summary_data = self.request.POST.get('summary_data', '[]')
+            print('Received Summary Data:', summary_data)  # Debugging statement
+
+            try:
+                data = json.loads(summary_data)
+                for item in data:
+                    investor_name = item.get('investor')
+                    amount = float(item.get('amount'))
+
+                    # Find or create investor
+                    investor, created = Investor.objects.get_or_create(name=investor_name)
+
+                    # Save committed capital entry
+                    CommittedCapital.objects.create(
+                        fund=fund,
+                        investor=investor,
+                        amount=amount
+                    )                    
+            except json.JSONDecodeError:
+                print('Error decoding JSON data')  # Debugging statement
+
             return redirect(self.success_url)
         else:
             return self.render_to_response(self.get_context_data(form=form))
 
-class FundCloseCreateForm(FormView):
-    form_class = FundCloseForm
-    template_name = 'funds/fund_close2.html'
-    success_url = reverse_lazy('funds')
+# Using Json for committed capital
+class CommittedCapitalSubmitView(View):
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body).get('data', [])
+            fund = get_object_or_404(Fund, pk=self.kwargs['pk'])
 
-    def form_valid(self, form):
-        # Extract form data
-        commitments_list = form.cleaned_data['commitments_list']
+            # Process the submitted data
+            for item in data:
+                investor_name = item.get('investor')
+                amount = float(item.get('amount'))
 
-        for commitment in commitments_list:
-            investor = commitment.get('investor')
-            commitment_amount = commitment.get('commitment_amount')
-
-            if investor and commitment_amount:
+                # Retrieve existing investor or raise an error if not found
                 try:
-                    CommittedCapital.objects.create(investor = investor, amount = commitment_amount)
-                except Exception as e:
-                    messages.error(self.request, f'Error updating commitments: {e}')
-                    return self.form_invalid(form)
-        
-        messages.success(self.request, 'Fund close procesed successfully.')
-        return super().form_valid(form)
+                    investor = Investor.objects.get(name=investor_name)
+                except Investor.DoesNotExist:
+                    return JsonResponse({'status': 'error', 'message': f'Investor "{investor_name}" does not exist.'}, status=400)
+
+                # Save committed capital entry
+                CommittedCapital.objects.create(
+                    fund=fund,
+                    investor=investor,
+                    amount=amount
+                )
+
+            return JsonResponse({'status': 'success'}, status=200)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 def generate_unique_number(fund):
     max_number = NoticeNumber.objects.filter(fund=fund).aggregate(Max('number'))['number__max']

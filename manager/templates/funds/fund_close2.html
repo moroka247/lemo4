@@ -2,18 +2,164 @@
 {% load custom_filters %}
 
 {% block title %}
-Fund Close: {{ fund.name}}
+Fund Close: {{ fund.name }}
 {% endblock title %}
 
 {% block content %}
 
 <div class="container">
+    <h4>Committed Capital to {{ fund.name }}</h4>
     <div class="row my-5">
         <form method="post">
             {% csrf_token %}
-            {{ form.as_table }}
-            <button type="submit">Submit</button>
+            
+            {{ formset.management_form }}
+            
+            <div class="form-container">
+                <!-- Header Row -->
+                <div class="form-header">
+                    <div class="form-header-item wide">Investor</div>
+                    <div class="form-header-item narrow">Amount</div>
+                    <div class="form-header-item narrow">Actions</div>
+                </div>
+
+                <!-- Form Rows -->
+                <div id="form-rows">
+                    {% for form in formset %}
+                        <div class="form-row" data-form-index="{{ forloop.counter0 }}">
+                            <div class="form-item wide">{{ form.investor }}</div>
+                            <div class="form-item narrow">{{ form.amount }}</div>
+                            <div class="form-item narrow">
+                                <button type="button" class="btn btn-sm btn-danger delete-form">-</button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Total Row -->
+                <div class="form-row total-row">
+                    <div class="form-item wide">Total</div>
+                    <div class="form-item narrow" id="total-amount">0.00</div>
+                    <div class="form-item narrow"></div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-sm btn-secondary" id="add-form">+</button>
+                <button type="submit" class="btn btn-sm btn-success">Process</button>
+            </div>
         </form>
     </div>
 </div>
+
+<div id="empty-form" style="display: none;">
+    <div class="form-row" data-form-index="__prefix__">
+        <div class="form-item wide">
+            {{ formset.empty_form.investor }}
+        </div>
+        <div class="form-item narrow">
+            {{ formset.empty_form.amount }}
+        </div>
+        <div class="form-item narrow">
+            <button type="button" class="btn btn-sm btn-danger delete-form">-</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-container {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .form-header, .form-row {
+        display: flex;
+        flex-direction: row;
+        margin-bottom: 3px;
+    }
+
+    .form-header-item, .form-item {
+        padding: 3px;
+        border: 0.5px solid #ddd;
+        box-sizing: border-box;
+    }
+
+    .form-header-item {
+        font-weight: bold;
+        color: white;
+        background-color: #417a59;
+    }
+
+    .form-header-item.wide, .form-item.wide {
+        flex: 4; /* Make the first column wider */
+    }
+
+    .form-header-item.narrow, .form-item.narrow {
+        flex: 1; /* Make the second and third columns narrower and equal */
+    }
+
+    .form-actions {
+        margin-top: 5px;
+    }
+
+    .form-actions button {
+        margin-right: 5px;
+    }
+
+    .total-row {
+        font-weight: bold;
+        background-color: #f4f4f4;
+    }
+
+    .total-row .form-item {
+        border: 1px solid #ddd;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const addButton = document.getElementById('add-form');
+        const formRows = document.getElementById('form-rows');
+        const totalFormsInput = document.getElementById('id_form-TOTAL_FORMS');
+        const emptyFormTemplate = document.getElementById('empty-form').innerHTML;
+        const totalAmountElement = document.getElementById('total-amount');
+
+        function calculateTotal() {
+            let total = 0;
+            document.querySelectorAll('.form-row .form-item.narrow input').forEach(function (input) {
+                const value = parseFloat(input.value) || 0;
+                total += value;
+            });
+            totalAmountElement.textContent = total.toFixed(2);
+        }
+
+        addButton.addEventListener('click', function () {
+            const formIdx = parseInt(totalFormsInput.value, 10);
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formIdx);
+            formRows.insertAdjacentHTML('beforeend', newFormHtml);
+            totalFormsInput.value = formIdx + 1;
+            calculateTotal();
+        });
+
+        formRows.addEventListener('click', function (event) {
+            if (event.target.classList.contains('delete-form')) {
+                event.target.closest('.form-row').remove();
+                calculateTotal();
+            }
+        });
+
+        formRows.addEventListener('input', function () {
+            calculateTotal();
+        });
+    });
+
+    document.getElementById('numberInput').addEventListener('input', function (e) {
+        let value = e.target.value.replace(/,/g, ''); // Remove commas
+        if (!isNaN(value) && value !== '') {
+            e.target.value = Number(value).toLocaleString(); // Format with commas
+        }
+    });
+
+</script>
+
 {% endblock content %}

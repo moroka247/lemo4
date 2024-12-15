@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_filters',
+    'debug_toolbar',
 
     #own apps
     'manager',
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
     #3rd party
     'crispy_forms',
     'crispy_bootstrap4',
+    'corsheaders',
 ]
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
@@ -53,6 +55,7 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 USE_THOUSAND_SEPARATOR = True
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -60,6 +63,14 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
+]
+
+CORS_ALLOW_ALL_ORIGINS = True # Allows all domains to access API
+
+INTERNAL_IPS = [
+    '127.0.0.1',
+    'localhost',
 ]
 
 ROOT_URLCONF = 'fundmanager.urls'
@@ -91,8 +102,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'fundmanager',
         'HOST': 'localhost',
-        'USER': 'wise',
-        'PASSWORD': 'Wise7367@'
+        'USER': 'root',
+        'PASSWORD': 'root'
 
     }
 }

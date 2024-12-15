@@ -17,7 +17,7 @@ class Country(models.Model):
         return str(self.name)
 
 class Investor(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=255)
     short_name = models.CharField(max_length=10)
     logo = models.ImageField(upload_to='investors',default='no_picture.png', null=True)
     reg_no = models.CharField(max_length=20)
