@@ -195,7 +195,64 @@ Fund Close: {{ fund.name }}
             calculateTotal();
         }
 
-        addButton.addEventListener('click', function () {
+
+        function loadSavedData() {
+        const path = window.location.pathname;
+        const segments = path.split('/');
+        const fundIdIndex = segments.indexOf('fund') + 1;
+        const fundId = segments[fundIdIndex];
+
+        fetch(`/summary-data/${fundId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Network response was not ok');
+        })
+        .then(data => {
+            data.forEach(item => {
+                addToSummary(item.investor, parseFloat(item.amount).toFixed(2));
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching saved data:', error);
+        });
+    }
+        loadSavedData();
+
+    function deleteRow(investorName, rowElement) {
+        const csrfToken = getCookie('csrftoken'); // Function to get CSRF token if necessary
+
+        fetch(`/summary-data/1`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken, // Include CSRF token if enabled
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Failed to delete the entry.');
+        })
+        .then(data => {
+            console.log(data.message);
+            rowElement.remove();
+            calculateTotal(); // Update totals
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            messageElement.textContent = 'Error deleting the entry.';
+            messageElement.style.display = 'block';
+        });
+    }
+        addButton.addEventListener('click', function (e) {
             const investor = investorField.options[investorField.selectedIndex].text;
             const amount = parseFloat(amountField.value).toFixed(2);
 
@@ -208,19 +265,29 @@ Fund Close: {{ fund.name }}
             // Clear input fields
             investorField.value = '';
             amountField.value = '';
+            e.preventDefault()
         });
 
         summaryRows.addEventListener('click', function (event) {
             if (event.target.classList.contains('remove-row')) {
                 const row = event.target.closest('.summary-row');
                 const investorName = row.querySelector('.form-item.wide').textContent;
-                row.remove();
-                existingInvestors.delete(investorName);
-                calculateTotal();
+                if (investorName) {
+                    if (confirm('Are you sure you want to delete this entry?')) {
+                            deleteRow(investorName, row);
+                            row.remove();
+                            existingInve
+                            stors.delete(investorName);
+                            calculateTotal();
+                        }
+                } else {
+                    console.error('Row ID is missing.');
+                }
+
             }
         });
 
-        document.getElementById('summary-form').addEventListener('submit', function () {
+        document.getElementById('summary-form').addEventListener('submit', function (e) {
             const data = Array.from(document.querySelectorAll('#summary-rows .summary-row')).map(row => {
                 return {
                     investor: row.querySelector('.form-item.wide').textContent,
@@ -228,10 +295,54 @@ Fund Close: {{ fund.name }}
                 };
             });
 
+            const path = window.location.pathname;
+            const segments = path.split('/');
+            const fundIdIndex = segments.indexOf('fund') + 1;
+            const fundId = segments[fundIdIndex];
+            console.log('Fund ID:', fundId);
+
+            fetch(`/summary-data/${fundId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'), // Include CSRF token if CSRF protection is enabled
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Network response was not ok');
+            })
+            .then(data => {
+                console.log('Success:', data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+
+            console.log(JSON.stringify(data) , 'fffffffffffffffffffffffffffffff');
             // Set the hidden input field value to serialized summary data
             document.getElementById('summary_data').value = JSON.stringify(data);
+            e.preventDefault();
         });
     });
+    
+    function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
 </script>
 
 {% endblock content %}

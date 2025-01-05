@@ -43,8 +43,9 @@ urlpatterns = [
     path('add_fund/', AddFund.as_view(), name='add_fund'),
     path('edit_fund/<int:pk>/', EditFund.as_view(), name='edit_fund'),
     path('delete_fund/<int:pk>/', DeleteFund.as_view(), name='delete_fund'),
-    #path('fund/<int:pk>/commit/', CommittedCapitalSubmitView.as_view(), name='fund_close'),
     path('fund/<int:pk>/commit/', CommittedCapitalCreateView.as_view(), name='fund_close'),
+    path('delete_summary-data/<str:pk>', CommittedCapitalDelete.as_view(), name='delete_summary_data'),
+    path('summary-data/<int:pk>', CommittedCapitalSubmitView.as_view(), name='save_summary_data'),
     path('fund/<int:pk>/capital_call/', CapitalCallView.as_view(), name='capital_call'),
     # Investors
     path('investors/', InvestorsList.as_view(), name='investors'),

@@ -472,13 +472,16 @@ class CommittedCapitalCreateView(FormView):
     form_class = CommittedCapitalFormSet
     template_name = 'funds/fund_close4.html'
     success_url = reverse_lazy('funds')
-
+    print('888888888888888888888888888888888***********************************8888888888')
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        committedCapital = CommittedCapital.objects.all()
+       
         if self.request.POST:
-            context['formset'] = CommittedCapitalFormSet(self.request.POST, queryset=CommittedCapital.objects.none())
+            context['formset'] = CommittedCapitalFormSet(self.request.POST, queryset=committedCapital)
         else:
-            context['formset'] = CommittedCapitalFormSet(queryset=CommittedCapital.objects.none())
+            context['formset'] = CommittedCapitalFormSet(self.request.POST, queryset=committedCapital)
+
         context['fund'] = get_object_or_404(Fund, pk=self.kwargs['pk'])
         return context
 
@@ -518,11 +521,57 @@ class CommittedCapitalCreateView(FormView):
         else:
             return self.render_to_response(self.get_context_data(form=form))
 
+
+class CommittedCapitalDelete(View):
+    def delete(self, request, *args, **kwargs):
+        try:
+            investorName = self.kwargs['id']
+            print(investorName,'investorName')
+            committed_capital = get_object_or_404(CommittedCapital, investor=investorName)
+
+            committed_capital.delete()
+
+            return JsonResponse({'status': 'success', 'message': 'Entry deleted successfully.'}, status=200)
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+
 # Using Json for committed capital
 class CommittedCapitalSubmitView(View):
-    def post(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         try:
-            data = json.loads(request.body).get('data', [])
+            fund = get_object_or_404(Fund, pk=self.kwargs['pk'])
+            committed_capitals = CommittedCapital.objects.filter(fund=fund)
+            data = [
+                {
+                    "investor": commitment.investor.name,
+                    "amount": commitment.amount,
+                }
+                for commitment in committed_capitals
+            ]
+
+            return JsonResponse(data, safe=False, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+        
+    def delete(self, request, *args, **kwargs):
+        try:
+            investorName = self.kwargs['id']
+            print(investorName,'investorName')
+            committed_capital = get_object_or_404(CommittedCapital, investor=investorName)
+
+            committed_capital.delete()
+
+            return JsonResponse({'status': 'success', 'message': 'Entry deleted successfully.'}, status=200)
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        
+    def post(self, request, *args, **kwargs):
+        try:      
+            data = json.loads(request.body)
             fund = get_object_or_404(Fund, pk=self.kwargs['pk'])
 
             # Process the submitted data
