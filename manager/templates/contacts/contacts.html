@@ -44,8 +44,12 @@ Contacts home
                 <td>{{ contact.phone_number }}</td>
                 <td>{{ contact.email_address }}</td>
                 <td align="center">
-                    <a href="{% url 'edit_contact' pk=contact.id %}" class="btn btn-sm btn-success">Update</a>
-                    <a href="{% url 'delete_contact' pk=contact.id %}" class="btn btn-sm btn-danger">Delete</a>
+                    <a href="{% url 'edit_contact' pk=contact.id %}" style="color: #28a745; font-size: 1rem;">
+                        <i class="fas fa-edit"></i>
+                    </a>&nbsp;&nbsp;&nbsp;
+                    <a href="{% url 'delete_contact' pk=contact.id %}" style="color: #dc3545; font-size: 1rem;">
+                        <i class="fas fa-trash-alt"></i>
+                    </a>
                 </td>
             </tr>
         {% endfor %}

@@ -7,14 +7,8 @@ Funds home
 {% block content %}
 
 <div class="container">
-    <div class="row my-5">
+    <div class="row my-2">
         <div class="col-md-8"> <h5><b>FUNDS</b></h5></div>
-    
-        <div align="right" class="col-md-4">        
-            <a href="{% url 'home' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
-                <i class="fas fa-home"> Home</i>
-            </a>
-        </div>
     </div>
 </div>
 
@@ -44,8 +38,12 @@ Funds home
                 <td align="right">{{ fund_data.called_capital }}</td>
                 <td align="right">{{ fund_data.undrawn_commitment }}</td>
                 <td align="center">
-                    <a href="{% url 'edit_fund' pk=fund_data.fund.id %}" class="btn btn-sm btn-block btn-success">Update</a>
-                    <a href="{% url 'delete_fund' pk=fund_data.fund.id %}" class="btn btn-sm btn-block btn-danger">Delete</a>
+                    <a href="{% url 'edit_fund' pk=fund_data.fund.id %}" style="color: #28a745; font-size: 1rem;">
+                        <i class="fas fa-edit"></i>
+                    </a> &nbsp;&nbsp;&nbsp;
+                    <a href="{% url 'delete_fund' pk=fund_data.fund.id %}" style="color: #dc3545; font-size: 1rem;">
+                        <i class="fas fa-trash-alt"></i>
+                    </a>
                 </td>
             </tr>
             {% endfor %}

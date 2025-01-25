@@ -7,14 +7,8 @@ Investors home
 {% block content %}
 
 <div class="container">
-    <div class="row my-5">
+    <div class="row my-2">
         <div class="col-md-8"> <h5><b>INVESTORS</b></h5></div>
-
-        <div align="right" class="col-md-4">        
-            <a href="{% url 'home' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
-                <i class="fas fa-home"> Home</i>
-            </a>
-        </div>
 
     {% comment %} 
         <div align="right" class="col-md-4">        
@@ -39,15 +33,9 @@ Investors home
                 </div>
             </div>
         </div>
-        
-
-            <a href="{% url 'home' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
-                <i class="fas fa-home"> Home</i>
-            </a> 
-        </div>
-    {% endcomment %}
-
     </div>
+    {% endcomment %}
+</div>
 
 </div>
 {% for message in messages %}
@@ -82,8 +70,12 @@ Investors home
                 <td>{{ investor_data.primary_contact.email_address }}</td>
                 <td>{{investor_data.primary_contact.phone_number}}</td>
                 <td align="center">
-                    <a href="{% url 'edit_investor' pk=investor_data.investor.id %}" class="btn btn-sm btn-success">Update</a>
-                    <a href="{% url 'delete_investor' pk=investor_data.investor.id %}" class="btn btn-sm btn-danger">Delete</a>
+                    <a href="{% url 'edit_investor' pk=investor_data.investor.id %}" style="color: #28a745; font-size: 1rem;">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{% url 'delete_investor' pk=investor_data.investor.id %}" style="color: #dc3545; font-size: 1rem;">
+                        <i class="fas fa-trash-alt"></i>
+                    </a>
                 </td>
             </tr>
             {% endfor %}
