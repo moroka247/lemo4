@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+  <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
+
+  <!-- Tile Grid Layout -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Total AUM Tile -->
+    <div class="p-6 bg-white shadow-lg rounded-lg">
+      <h2 class="text-lg font-semibold mb-2">Total Assets Under Management (AUM)</h2>
+      <p class="text-3xl font-bold text-blue-600">$1.5B</p>
+    </div>
+
+    <!-- Number of Active Funds Tile -->
+    <div class="p-6 bg-white shadow-lg rounded-lg">
+      <h2 class="text-lg font-semibold mb-2">Number of Active Funds</h2>
+      <p class="text-3xl font-bold text-green-600">12</p>
+    </div>
+
+    <!-- Total Commitments Tile -->
+    <div class="p-6 bg-white shadow-lg rounded-lg">
+      <h2 class="text-lg font-semibold mb-2">Total Commitments</h2>
+      <p class="text-3xl font-bold text-purple-600">$2.3B</p>
+    </div>
+
+    <!-- Fund Performance Chart Tile -->
+    <div class="p-6 bg-white shadow-lg rounded-lg col-span-1 sm:col-span-2 lg:col-span-3">
+      <h2 class="text-lg font-semibold mb-4">Fund Performance</h2>
+      <canvas id="fundPerformanceChart"></canvas>
+    </div>
+
+    <!-- Investor Commitments Chart Tile -->
+    <div class="p-6 bg-white shadow-lg rounded-lg col-span-1 sm:col-span-2 lg:col-span-3">
+      <h2 class="text-lg font-semibold mb-4">Investor Commitments</h2>
+      <canvas id="investorCommitmentsChart"></canvas>
+    </div>
+
+    <!-- Recent Activities Tile -->
+    <div class="p-6 bg-white shadow-lg rounded-lg col-span-1 sm:col-span-2 lg:col-span-1">
+      <h2 class="text-lg font-semibold mb-4">Recent Activities</h2>
+      <ul class="space-y-2">
+        <li class="text-gray-700">
+          <span class="font-bold">Capital Call Notice</span> issued for Fund ABC - $50M.
+          <span class="text-gray-500 text-sm block">2 hours ago</span>
+        </li>
+        <li class="text-gray-700">
+          <span class="font-bold">Investor Commitment</span> received from XYZ Investor - $20M.
+          <span class="text-gray-500 text-sm block">1 day ago</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Alerts & Notifications Tile -->
+    <div class="p-6 bg-white shadow-lg rounded-lg col-span-1 sm:col-span-2 lg:col-span-2">
+      <h2 class="text-lg font-semibold mb-4">Alerts & Notifications</h2>
+      <ul class="space-y-2">
+        <li class="text-red-600 font-bold">Alert:</li>
+        <p class="text-gray-700">Fund ABC is nearing its investment limit.</p>
+        <li class="text-yellow-600 font-bold">Reminder:</li>
+        <p class="text-gray-700">Quarterly report submission due in 5 days.</p>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js Placeholder Scripts -->
+<script>
+  const ctx1 = document.getElementById('fundPerformanceChart').getContext('2d');
+  const ctx2 = document.getElementById('investorCommitmentsChart').getContext('2d');
+
+  // Placeholder Chart 1
+  new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: ['January', 'February', 'March', 'April'],
+      datasets: [{
+        label: 'Fund Performance',
+        data: [10, 20, 30, 40],
+        borderColor: 'blue',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+    }
+  });
+
+  // Placeholder Chart 2
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: ['Investor A', 'Investor B', 'Investor C'],
+      datasets: [{
+        label: 'Commitments',
+        data: [500, 300, 400],
+        backgroundColor: ['#4CAF50', '#FF9800', '#2196F3'],
+      }]
+    },
+    options: {
+      responsive: true,
+    }
+  });
+</script>
+{% endblock %}

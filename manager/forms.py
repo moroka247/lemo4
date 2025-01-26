@@ -26,7 +26,7 @@ class CompanyForm(forms.ModelForm):
 class ContactForm(forms.ModelForm):
     class Meta:
         model = Contact
-        fields= ['primary_contact','name','surname','phone_number','email_address']
+        fields= ['primary_contact','name','surname','phone_number','email_address','investor']
 
 ContactFormSet = inlineformset_factory(Investor, Contact, form=ContactForm, extra=1, can_delete=True)
 

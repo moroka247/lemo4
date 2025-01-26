@@ -7,18 +7,25 @@ Companies home
 {% block content %}
 
 <div class="container">
-    <div class="row my-5">
-        <div class="col-md-8"> <h5><b>COMPANIES</b></h5></div>
-    
-        <div align="right" class="col-md-4">        
-            <a href="{% url 'home' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
-                <i class="fas fa-home"> Home</i>
-            </a>
-        </div>
+    <div class="row my-2">
+        <div class="col-md-8"> <h4 style="font-weight: bold;">COMPANIES</h4></div>
     </div>
 </div>
 
 <div class="container shadow">
+
+    <!-- Search Form -->
+    <form method="get" class="d-flex mb-3">
+        <input 
+            type="text" 
+            name="q" 
+            class="form-control me-2" 
+            placeholder="Search companies..." 
+            value="{{ search_query }}"
+        >
+        <button type="submit" class="btn btn-outline-success">Search</button>
+    </form>
+    
     <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" href="{% url 'add_company' %}">
         <i class="fas fa-plus"> Add New Company</i>
     </a>
@@ -42,8 +49,12 @@ Companies home
                         <td align="center">{{ company.industry }}</td>
                         <td align="right">{{ company.country }}</td>
                         <td align="center">
-                            <a href="{% url 'edit_company' pk=company.id %}" class="btn btn-sm btn-success">Update</a>
-                            <a href="{% url 'delete_company' pk=company.id %}" class="btn btn-sm btn-danger">Delete</a>
+                            <a href="{% url 'edit_company' pk=company.id %}" style="color: #28a745; font-size: 1rem;">
+                                <i class="fas fa-edit"></i>
+                            </a>&nbsp;&nbsp;&nbsp;
+                            <a href="{% url 'delete_company' pk=company.id %}" style="color: #dc3545; font-size: 1rem;">
+                                <i class="fas fa-trash-alt"></i>
+                            </a>
                         </td>
                     </tr>
                 {% endfor %}

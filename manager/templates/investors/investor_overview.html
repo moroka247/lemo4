@@ -4,23 +4,10 @@
 Investor details
 {% endblock title %}
 
-{% block content %}
-
-<div class="row">
-    <div class="col-md mt-2">
-        <p align="right">
-                    <a href="{% url 'investors' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
-                        <i class="fas fa-home"> Home</i>
-                    </a>
-                    <a href="{% url 'investors' %}" class="btn btn-outline-success" style="height:30px;width:200px;padding:2px">
-                        <i class="fas fa-step-backward"> Back to investors</i>
-                    </a>
-        </p>
-    </div>
-</div>
+{% block content %}qx
 
 <div class="row d-flex align-items-stretch">
-	<div class="col-md mt-2">
+	<div class="col-md mt-1">
 		<div class="card card-body h-100 custom-background"  style="background-color: #c1e4cb;">
 			<h4 style="font-weight:bold">{{investor}}</h4>
 			<hr>

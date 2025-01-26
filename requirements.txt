@@ -16,3 +16,5 @@ setuptools
 sqlparse
 tzdata
 urllib3
+pandas
+openpyxl

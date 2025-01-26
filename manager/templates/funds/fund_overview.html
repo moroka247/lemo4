@@ -8,19 +8,6 @@
 
 {% block content %}
 
-<table class="table table-borderless table-hover" cellspacing="1px">
-    <thead>
-        <td align="right">
-            <a href="#" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
-                <i class="fas fa-plus"> Add New</i>
-            </a>
-            <a href="{% url 'funds' %}" class="btn btn-outline-success" style="height:30px;width:200px;padding:2px">
-                <i class="fas fa-step-backward"> Back to funds</i>
-            </a>
-        </td>
-    </thead>
-</table>
-
 <h5>{{ fund }}</h5>
 <hr>
 <b>
@@ -230,7 +217,10 @@
     <div role="tabpanel" class="tab-pane fade" id="investors">
 
         <div class="row">
-            <div class="col-md-7">
+            <div class="col-md-8">
+                <div style="text-align: right; margin-bottom: 10px;">
+                    <a href="?export=excel"><i class="fas fa-file-excel"></i></a>
+                </div>
                 <table class="table" style="width:100%">
                     <colgroup>
                         <col span="1" style="width: 50%;">
@@ -386,12 +376,37 @@
     </div>
     
     <div role="tabpanel" class="tab-pane fade" id="operations">
-
-        <a class="btn btn-outline-success btn-sm btn-sm w-100 my-2 btn-bold" href="{% url 'fund_close' pk=fund.id %}" class="btn btn-sm btn-block btn-success">Fund Close</a>
-        <a class="btn btn-outline-success  btn-sm btn-sm w-100 my-2 btn-bold" href="{% url 'capital_call' pk=fund.id %}" class="btn btn-sm btn-block btn-success">Capital Call</a>
-        <a class="btn btn-outline-success  btn-sm btn-sm w-100 my-2 btn-bold" href="#" class="btn btn-sm btn-block btn-success">Distribution</a>
-        <a class="btn btn-outline-success  btn-sm btn-sm w-100 my-2 btn-bold" href="#" class="btn btn-sm btn-block btn-success">Disbursement</a>
-        <a class="btn btn-outline-success  btn-sm btn-sm w-100 my-2 btn-bold" href="#" class="btn btn-sm btn-block btn-success">Proceeds</a>
+        <div class="d-flex justify-content-between flex-wrap">
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'fund_close' pk=fund.id %}">
+                    <i class="fas fa-archive fa-2x"></i><br> Fund Close
+                </a>
+            </div>
+    
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'capital_call' pk=fund.id %}">
+                    <i class="fas fa-hand-holding-usd fa-2x"></i><br> Capital Call
+                </a>
+            </div>
+    
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
+                    <i class="fas fa-gift fa-2x"></i><br> Distribution
+                </a>
+            </div>
+    
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
+                    <i class="fas fa-money-check-alt fa-2x"></i><br> Disbursement
+                </a>
+            </div>
+    
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
+                    <i class="fas fa-cash-register fa-2x"></i><br> Proceeds
+                </a>
+            </div>
+        </div>
     </div>
 
 </div>

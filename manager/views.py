@@ -20,6 +20,10 @@ from .forms import *
 import requests
 import json
 from decimal import Decimal
+import pandas as pd
+from django.db.models import Q
+from django.core.paginator import Paginator
+from django.shortcuts import render
 
 # API Views
 class CurrencyViewSet(ModelViewSet):
@@ -252,14 +256,58 @@ class FundDetail(DetailView):
         })
         return context
 
+    #Functionality to export to Excel
+    def get(self, request, *args, **kwargs):
+        if request.GET.get('export') == 'excel':
+            return self.export_to_excel()
+        return super().get(request, *args, **kwargs)
+
+    def export_to_excel(self):
+        fund = self.get_object()
+        committed_capital = CommittedCapital.objects.filter(fund=fund).values('investor').annotate(investor_commitment=Sum('amount')).values('investor', 'investor_commitment')
+        
+        # Prepare data for the Excel file
+        data = [
+            {
+                'Investor': Investor.objects.get(id=entry['investor']).name,
+                'Committed Capital': entry['investor_commitment'],
+            }
+            for entry in committed_capital
+        ]
+
+        df = pd.DataFrame(data)
+
+        # Create Excel response
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename=fund_{fund.id}_data.xlsx'
+
+        # Export to Excel using openpyxl
+        df.to_excel(response, index=False, engine='openpyxl')
+        return response
+
 class InvestorsList(ListView):
     model = Investor
     template_name = 'investors/investors.html'
     context_object_name = 'investors'
 
+    def get_queryset(self):
+        # Start with all investors
+        queryset = super().get_queryset()
+
+        # Check for a search query
+        query = self.request.GET.get('q')
+        if query:
+            # Filter by multiple fields using Q objects
+            queryset = queryset.filter(
+                Q(name__icontains=query) |
+                Q(short_name__icontains=query)
+            )
+        return queryset
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        # Pull all primary contacts
         primary_contacts = Contact.objects.filter(primary_contact=True)
         # Annotate each investor with their primary contact
         investors_data = []
@@ -269,7 +317,9 @@ class InvestorsList(ListView):
                 'investor': investor,
                 'primary_contact': primary_contact
             })
+
         context['investors_data'] = investors_data
+        context['search_query'] = self.request.GET.get('q', '')
         return context
 
 class InvestorDetail(DetailView):
@@ -319,6 +369,11 @@ class CompanyDetail(DetailView):
     model = Investment
     template_name = 'companies/company_overview.html'
     context_object_name = 'company'
+
+class Dashboard(TemplateView):
+    model = Fund
+    template_name = 'reports/dashboard.html'
+#    context_object_name = 'summary_data'
 
 # CRUD Views
 class AddFund(CreateView):
@@ -723,7 +778,6 @@ class CapitalCallCreateView(FormView):
         else:
             return self.render_to_response(self.get_context_data(form=form))
 
-
 class FormSuccessView(TemplateView):
     template_name = 'form_success.html'
     extra_context = {
@@ -731,3 +785,4 @@ class FormSuccessView(TemplateView):
         'heading': 'Success',
         'content': 'Record has been created.'
     }
+

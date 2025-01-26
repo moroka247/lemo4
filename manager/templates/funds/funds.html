@@ -8,11 +8,24 @@ Funds home
 
 <div class="container">
     <div class="row my-2">
-        <div class="col-md-8"> <h5><b>FUNDS</b></h5></div>
+        <div class="col-md-8"><h4 style="font-weight: bold;">FUNDS</h4></div>
     </div>
 </div>
 
 <div class="container shadow">
+
+    <!-- Search Form -->
+    <form method="get" class="d-flex mb-3">
+        <input 
+            type="text" 
+            name="q" 
+            class="form-control me-2" 
+            placeholder="Search fund..." 
+            value="{{ search_query }}"
+        >
+        <button type="submit" class="btn btn-outline-success">Search</button>
+    </form>
+
     <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" href="{% url 'add_fund' %}">
         <i class="fas fa-plus"> Add New Fund</i>
     </a>

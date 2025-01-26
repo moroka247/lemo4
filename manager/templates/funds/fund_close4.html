@@ -12,31 +12,27 @@ Fund Close: {{ fund.name }}
 
     <!-- Input Form Section -->
     <div class="row my-5">
-        <div class="col-md-6"> <!-- Reduced width to half of the page -->
+        <div class="col-md-6">
             <form id="input-form" method="post">
                 {% csrf_token %}
-                
-                <div class="form-container">
-                    <!-- Input Form Header -->
-                    <div class="form-header">
-                        <div class="form-header-item wide">Investor</div>
-                        <div class="form-header-item narrow">Amount</div>
-                        <div class="form-header-item narrow"></div>
-                    </div>
-
-                    <!-- Input Form Row -->
-                    <div class="form-row">
-                        <div class="form-item wide">
-                            {{ formset.empty_form.investor }}
-                        </div>
-                        <div class="form-item narrow">
-                            {{ formset.empty_form.amount }}
-                        </div>
-                        <div class="form-item narrow">
-                            <button type="button" class="btn btn-sm btn-secondary" id="add-form">+</button>
-                        </div>
-                    </div>
-                </div>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Investor</th>
+                            <th>Amount</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="input-rows">
+                        <tr>
+                            <td>{{ formset.empty_form.investor }}</td>
+                            <td>{{ formset.empty_form.amount }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-secondary" id="add-form">+</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </form>
             <p id="message" style="color: red; display: none;">The investor has already been added below. To edit the investor, it must first be removed from the summary below.</p>
         </div>
@@ -48,294 +44,262 @@ Fund Close: {{ fund.name }}
             <h5>Summary</h5>
             <form id="summary-form" method="post">
                 {% csrf_token %}
-                <div class="form-container">
-                    <!-- Summary Header Row -->
-                    <div class="form-header">
-                        <div class="form-header-item wide">Investor</div>
-                        <div class="form-header-item narrow">Amount</div>
-                        <div class="form-header-item narrow">Percentage</div>
-                        <div class="form-header-item narrow">Actions</div>
-                    </div>
-
-                    <!-- Summary Rows -->
-                    <div id="summary-rows">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Investor</th>
+                            <th>Amount</th>
+                            <th>Percentage</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-rows">
                         <!-- Rows will be dynamically added here -->
-                    </div>
-
-                    <!-- Total Row -->
-                    <div class="form-row total-row">
-                        <div class="form-item wide">Total</div>
-                        <div class="form-item narrow" id="total-amount">0.00</div>
-                        <div class="form-item narrow"></div>
-                        <div class="form-item narrow"></div>
-                    </div>
-
-                    <!-- Hidden Field for Summary Data -->
-                    <input type="hidden" name="summary_data" id="summary_data">
-
-                    <!-- Submit Button -->
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-sm btn-success" id="submit-summary">Submit</button>
-                    </div>
-                </div>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Total</th>
+                            <th id="total-amount">0.00</th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </tfoot>
+                </table>
+                <input type="hidden" name="summary_data" id="summary_data">
+                <button type="submit" class="btn btn-sm btn-success" id="submit-summary">Submit</button>
             </form>
         </div>
     </div>
 </div>
 
 <style>
-    .form-container {
-        display: flex;
-        flex-direction: column;
+    table {
+        width: 100%;
+        border-collapse: collapse;
     }
 
-    .form-header, .form-row {
-        display: flex;
-        flex-direction: row;
-        margin-bottom: 5px;
-    }
-
-    .form-header-item, .form-item {
+    th, td {
         padding: 5px;
+        text-align: left;
         border: 1px solid #ddd;
-        box-sizing: border-box;
     }
 
-    .form-header-item {
-        font-weight: bold;
-        background-color: #417a59; /* Updated background color */
-        color: white; /* Updated text color */
+    .table.table-bordered thead th {
+        background-color: #417a59 !important; /* Dark green */
+        color: white !important; /* White text */
     }
 
-    .form-header-item.wide, .form-item.wide {
-        flex: 4; /* Make the first column wider */
-    }
-
-    .form-header-item.narrow, .form-item.narrow {
-        flex: 1; /* Make the other columns narrower */
-    }
-
-    .form-actions {
-        margin-top: 5px;
-    }
-
-    .form-actions button {
-        margin-right: 5px;
-    }
-
-    .total-row {
+    tfoot th {
         font-weight: bold;
         background-color: #f4f4f4;
     }
 
-    .total-row .form-item {
-        border: 1px solid #ddd;
+    .btn {
+        padding: 5px 10px;
     }
 
-    .summary-row .form-item {
-        border: 1px solid #ddd;
-        padding: 8px;
-    }
-
-    .summary-row {
-        display: flex;
-        flex-direction: row;
-        margin-bottom: 5px;
+    #message {
+        margin-top: 10px;
     }
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const addButton = document.getElementById('add-form');
-        const summaryRows = document.getElementById('summary-rows');
-        const totalAmountElement = document.getElementById('total-amount');
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const addButton = document.getElementById("add-form");
+        const summaryRows = document.getElementById("summary-rows");
+        const totalAmountElement = document.getElementById("total-amount");
         const investorField = document.querySelector('#input-form select[name$="investor"]');
         const amountField = document.querySelector('#input-form input[name$="amount"]');
-        const messageElement = document.getElementById('message');
+        const messageElement = document.getElementById("message");
         let totalAmount = 0;
         let existingInvestors = new Set();
 
+        // Function to calculate the total amount and update percentages
         function calculateTotal() {
             totalAmount = 0;
-            document.querySelectorAll('#summary-rows .form-item.narrow.amount').forEach(function (item) {
-                const value = parseFloat(item.textContent) || 0;
-                totalAmount += value;
+
+            // Calculate total amount
+            document.querySelectorAll("#summary-rows tr").forEach(function (row) {
+                const amount = parseFloat(row.querySelector(".amount").textContent) || 0;
+                totalAmount += amount;
             });
+
+            // Update total amount display
             totalAmountElement.textContent = totalAmount.toFixed(2);
 
-            // Update percentages
-            document.querySelectorAll('#summary-rows .summary-row').forEach(function (row) {
-                const amountElement = row.querySelector('.form-item.narrow.amount');
-                const amount = parseFloat(amountElement.textContent) || 0;
-                const percentage = totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(2) + '%' : '0.00%';
-                amountElement.nextElementSibling.textContent = percentage;
+            // Update percentages for each row
+            document.querySelectorAll("#summary-rows tr").forEach(function (row) {
+                const amount = parseFloat(row.querySelector(".amount").textContent) || 0;
+                const percentage = totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(2) + "%" : "0.00%";
+                row.querySelector(".percentage").textContent = percentage;
             });
         }
 
+        // Function to add a new row to the summary table
         function addToSummary(investor, amount) {
             if (existingInvestors.has(investor)) {
-                messageElement.style.display = 'block';
+                messageElement.style.display = "block";
                 return;
             } else {
-                messageElement.style.display = 'none';
+                messageElement.style.display = "none";
             }
 
-            const summaryRow = document.createElement('div');
-            summaryRow.className = 'form-row summary-row';
-            summaryRow.innerHTML = `
-                <div class="form-item wide">${investor}</div>
-                <div class="form-item narrow amount">${amount}</div>
-                <div class="form-item narrow">0.00%</div>
-                <div class="form-item narrow">
-                    <button type="button" class="btn btn-sm btn-danger remove-row">-</button>
-                </div>
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${investor}</td>
+                <td class="amount">${amount}</td>
+                <td class="percentage">0.00%</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-danger remove-row">Remove</button>
+                </td>
             `;
-            summaryRows.appendChild(summaryRow);
+
+            summaryRows.appendChild(row);
             existingInvestors.add(investor);
             calculateTotal();
         }
 
-
+        // Load saved data into the summary table
         function loadSavedData() {
-        const path = window.location.pathname;
-        const segments = path.split('/');
-        const fundIdIndex = segments.indexOf('fund') + 1;
-        const fundId = segments[fundIdIndex];
+            const path = window.location.pathname;
+            const segments = path.split("/");
+            const fundIdIndex = segments.indexOf("fund") + 1;
+            const fundId = segments[fundIdIndex];
 
-        fetch(`/summary-data/${fundId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-        .then(response => {
-            if (response.ok) {
-                return response.json();
-            }
-            throw new Error('Network response was not ok');
-        })
-        .then(data => {
-            data.forEach(item => {
-                addToSummary(item.investor, parseFloat(item.amount).toFixed(2));
-            });
-        })
-        .catch(error => {
-            console.error('Error fetching saved data:', error);
-        });
-    }
+            fetch(`/summary-data/${fundId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            })
+                .then((response) => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error("Network response was not ok");
+                })
+                .then((data) => {
+                    data.forEach((item) => {
+                        addToSummary(item.investor, parseFloat(item.amount).toFixed(2));
+                    });
+                })
+                .catch((error) => {
+                    console.error("Error fetching saved data:", error);
+                });
+        }
+
         loadSavedData();
 
-    function deleteRow(investorName, rowElement) {
-        const csrfToken = getCookie('csrftoken'); // Function to get CSRF token if necessary
+        // Function to delete a row
+        function deleteRow(investorName, rowElement) {
+            const csrfToken = getCookie("csrftoken");
 
-        fetch(`/summary-data/1`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken, // Include CSRF token if enabled
-            },
-        })
-        .then(response => {
-            if (response.ok) {
-                return response.json();
-            }
-            throw new Error('Failed to delete the entry.');
-        })
-        .then(data => {
-            console.log(data.message);
-            rowElement.remove();
-            calculateTotal(); // Update totals
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            messageElement.textContent = 'Error deleting the entry.';
-            messageElement.style.display = 'block';
-        });
-    }
-        addButton.addEventListener('click', function (e) {
+            fetch(`/summary-data/1`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken,
+                },
+            })
+                .then((response) => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error("Failed to delete the entry.");
+                })
+                .then((data) => {
+                    console.log(data.message);
+                    rowElement.remove();
+                    calculateTotal();
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    messageElement.textContent = "Error deleting the entry.";
+                    messageElement.style.display = "block";
+                });
+        }
+
+        // Event listener for the Add button
+        addButton.addEventListener("click", function (e) {
+            e.preventDefault();
+
             const investor = investorField.options[investorField.selectedIndex].text;
             const amount = parseFloat(amountField.value).toFixed(2);
 
             if (!investor || isNaN(amount) || amount <= 0) {
-                alert('Please select an investor and enter a valid amount.');
+                alert("Please select an investor and enter a valid amount.");
                 return;
             }
 
             addToSummary(investor, amount);
+
             // Clear input fields
-            investorField.value = '';
-            amountField.value = '';
-            e.preventDefault()
+            investorField.value = "";
+            amountField.value = "";
         });
 
-        summaryRows.addEventListener('click', function (event) {
-            if (event.target.classList.contains('remove-row')) {
-                const row = event.target.closest('.summary-row');
-                const investorName = row.querySelector('.form-item.wide').textContent;
-                if (investorName) {
-                    if (confirm('Are you sure you want to delete this entry?')) {
-                            deleteRow(investorName, row);
-                            row.remove();
-                            existingInve
-                            stors.delete(investorName);
-                            calculateTotal();
-                        }
-                } else {
-                    console.error('Row ID is missing.');
-                }
+        // Event listener for removing rows
+        summaryRows.addEventListener("click", function (event) {
+            if (event.target.classList.contains("remove-row")) {
+                const row = event.target.closest("tr");
+                const investorName = row.querySelector("td:first-child").textContent;
 
+                if (investorName && confirm("Are you sure you want to delete this entry?")) {
+                    deleteRow(investorName, row);
+                    existingInvestors.delete(investorName);
+                    row.remove();
+                    calculateTotal();
+                }
             }
         });
 
-        document.getElementById('summary-form').addEventListener('submit', function (e) {
-            const data = Array.from(document.querySelectorAll('#summary-rows .summary-row')).map(row => {
+        // Event listener for form submission
+        document.getElementById("summary-form").addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const data = Array.from(document.querySelectorAll("#summary-rows tr")).map((row) => {
                 return {
-                    investor: row.querySelector('.form-item.wide').textContent,
-                    amount: row.querySelector('.form-item.narrow.amount').textContent,
+                    investor: row.querySelector("td:first-child").textContent,
+                    amount: row.querySelector(".amount").textContent,
                 };
             });
 
             const path = window.location.pathname;
-            const segments = path.split('/');
-            const fundIdIndex = segments.indexOf('fund') + 1;
+            const segments = path.split("/");
+            const fundIdIndex = segments.indexOf("fund") + 1;
             const fundId = segments[fundIdIndex];
-            console.log('Fund ID:', fundId);
 
             fetch(`/summary-data/${fundId}`, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'), // Include CSRF token if CSRF protection is enabled
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
                 },
                 body: JSON.stringify(data),
             })
-            .then(response => {
-                if (response.ok) {
-                    return response.json();
-                }
-                throw new Error('Network response was not ok');
-            })
-            .then(data => {
-                console.log('Success:', data);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-
-            console.log(JSON.stringify(data) , 'fffffffffffffffffffffffffffffff');
-            // Set the hidden input field value to serialized summary data
-            document.getElementById('summary_data').value = JSON.stringify(data);
-            e.preventDefault();
+                .then((response) => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error("Network response was not ok");
+                })
+                .then((data) => {
+                    console.log("Success:", data);
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                });
         });
-    });
-    
-    function getCookie(name) {
+
+        // Utility function to get CSRF token
+        function getCookie(name) {
             let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
+            if (document.cookie && document.cookie !== "") {
+                const cookies = document.cookie.split(";");
                 for (let i = 0; i < cookies.length; i++) {
                     const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    if (cookie.substring(0, name.length + 1) === name + "=") {
                         cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                         break;
                     }
@@ -343,6 +307,10 @@ Fund Close: {{ fund.name }}
             }
             return cookieValue;
         }
+    });
+
 </script>
+
+
 
 {% endblock content %}

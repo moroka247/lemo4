@@ -70,6 +70,10 @@ urlpatterns = [
     path('add_contact/', AddContact.as_view(), name='add_contact'),
     path('edit_contact/<int:pk>/', EditContact.as_view(), name='edit_contact'),
     path('delete_contact/<int:pk>/', DeleteContact.as_view(), name='delete_contact'),
+    #Reports
+    path('dashboard/', Dashboard.as_view(), name='dashboard'),
+    
 ]  + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
 
 #pprint(urlpatterns)

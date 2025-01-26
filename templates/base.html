@@ -14,7 +14,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" 
         integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w==" crossorigin="anonymous">
 
+    <!-- Custom  js & css -->
     <link rel="stylesheet" type="text/css" href="{% static 'css/main.css' %}">
+
+    <!-- chart js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.3.2/dist/chart.min.js"></script>
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.3/css/fontawesome.min.css" 
+        integrity="sha384-wESLQ85D6gbsF459vf1CiZ2+rr+CsxRY0RpiF1tLlQpDnAgg6rwdsUF1+Ics2bni" crossorigin="anonymous">
 
     <title>LEMO | {% block title %}Home{% endblock title %}</title>
 
@@ -24,6 +32,7 @@
         <div class="brand"><h5>LEMO</h5></div>
         <div>
             <a href="#"><i class="fas fa-user"></i></a>
+            <a href="#"><i class="fas fa-cog"></i></a>
             <a href="#"><i class="fas fa-sign-out-alt"></i></a>
         </div>
     </div>
@@ -31,7 +40,7 @@
     <div class="sidebar" id="sidebar">
         <div>
             <div class="menu-item home-button active">
-                <a href="#" class="text-decoration-none text-white">
+                <a href="{% url 'dashboard' %}" class="text-decoration-none text-white">
                     <i class="fas fa-tachometer-alt"></i><span> Dashboard</span>
                 </a>
             </div>
@@ -47,7 +56,7 @@
             </div>
             <div class="menu-item">
                 <a href="{% url 'investments' %}" class="text-decoration-none text-white">
-                    <i class="fas fa-hand-holding-usd"></i><span> Investments</span>
+                    <i class="fas fa-chart-line"></i><span> Investments</span>
                 </a>
             </div>
             <div class="menu-item">
@@ -56,18 +65,18 @@
                 </a>
             </div>
             <div class="menu-item">
-                <a href="companies" class="text-decoration-none text-white">
+                <a href="{% url 'companies' %}" class="text-decoration-none text-white">
                     <i class="fas fa-building"></i><span> Companies</span>
                 </a>
             </div>
             <div class="menu-item">
                 <a href="#" class="text-decoration-none text-white">
-                    <i class="fas fa-cog"></i><span> Settings</span>
+                    <i class="fas fa-filter"></i><span> Deals</span>
                 </a>
             </div>
             <div class="menu-item">
                 <a href="#" class="text-decoration-none text-white">
-                    <i class="fas fa-filter"></i><span> Deals</span>
+                    <i class="fas fa-tools"></i><span> Admin</span>
                 </a>
             </div>
         </div>
@@ -78,9 +87,11 @@
 
     <div class="content">
         <div class="container content-container">
+            <font size="2">
             {% block content %}
 
             {% endblock content %}
+            </font>
         </div>
     </div>
 
@@ -102,5 +113,16 @@
             }
         }
     </script>
+
+    <!-- Bootstrap js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js" 
+        integrity="sha384-SR1sx49pcuLnqZUnnPwx6FCym0wLsk5JZuNx2bPPENzswTNFaQU1RDvt3wT4gWFG" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.min.js" 
+        integrity="sha384-j0CNLUeiqtyaRmlzUHCPZ+Gy5fQu0dQ6eZ/xAww941Ai1SxSY+0EQqNXNE6DZiVc" crossorigin="anonymous"></script>
+
+    {% block scripts %}
+
+    {% endblock scripts %}
+
 </body>
 </html>

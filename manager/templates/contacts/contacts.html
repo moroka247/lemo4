@@ -7,14 +7,8 @@ Contacts home
 {% block content %}
 
 <div class="container">
-    <div class="row my-5">
-        <div class="col-md-8"> <h5><b>CONTACTS</b></h5></div>
-
-        <div align="right" class="col-md-4">        
-            <a href="{% url 'home' %}" class="btn btn-outline-success" style="height:30px;width:110px;padding:2px">
-                <i class="fas fa-home"> Home</i>
-            </a>
-        </div>
+    <div class="row my-1">
+        <div class="col-md-8"><h4 style="font-weight: bold;">CONTACTS</h4></div>
     </div>
 </div>
 {% for message in messages %}
@@ -22,6 +16,19 @@ Contacts home
 {% endfor %}
 
 <div class="container shadow">
+
+    <!-- Search Form -->
+    <form method="get" class="d-flex mb-3">
+        <input 
+            type="text" 
+            name="q" 
+            class="form-control me-2" 
+            placeholder="Search contacts..." 
+            value="{{ search_query }}"
+        >
+        <button type="submit" class="btn btn-outline-success">Search</button>
+    </form>
+
    <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" href="{% url 'add_contact' %}">
         <i class="fas fa-plus"> Add New Contact</i>
     </a>

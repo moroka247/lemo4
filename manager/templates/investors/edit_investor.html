@@ -13,13 +13,13 @@
     <form action="" method="post" autocomplete="off">
         {% csrf_token %}
         <h4 class="">Entity Details</h4>
-        {{ form.as_p }}
+        {{ form | crispy }}
         <br>
         <h4 class="">Contact Details</h4>
         {{ contact_formset.management_form }}
         {{ contact_formset.non_form_errors }}
         {% for form in contact_formset %}
-            {{ form.as_p }}
+            {{ form | crispy }}
         {% endfor %}
         
         <div class="col-md-6 mt-3">

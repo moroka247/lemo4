@@ -105,5 +105,10 @@ body {
 }
 
 .content-container {
-    margin-top: 70px; /* Adjust for the height of the top navbar */
+    margin-top: 70px;
+}
+
+.table.table-bordered thead th {
+    background-color: #417a59;
+    color: white;
 }
