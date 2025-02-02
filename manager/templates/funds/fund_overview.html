@@ -8,7 +8,7 @@
 
 {% block content %}
 
-<h5>{{ fund }}</h5>
+<h4 style="font-weight: bold;">{{ fund }}</h4>
 <hr>
 <b>
 <ul class="nav nav-tabs">
@@ -181,17 +181,16 @@
 
             </div>
 
-            <table class="" style="width:100%">
+            <table class="table table-bordered" style="width:100%">
                 <colgroup>
                     <col span="1" style="width: 35%;">
                     <col span="1" style="width: 65%;">
                 </colgroup>
 
                 <thead class="table-header">
-                    
+                    <tr class="border-bottom"><th>Fund Name</th><th>{{ fund.name }}</th></tr>                    
                 </thead>
                 <tbody>
-                    <tr class="border-bottom"><td>Fund Name</td><td>{{ fund.name }}</td></tr>
                     <tr class="border-bottom"><td>Fund Short Name</td><td>{{ fund.short_name }}</td></tr>
                     <tr class="border-bottom"><td>Fund Structure</td><td>{{fund.structure}}</td></tr>
                     <tr class="border-bottom"><td>Fund Objective</td><td vertical-align: top>{{fund.objective}}</td></tr>
@@ -205,9 +204,9 @@
                     <tr class="border-bottom"><td>Undrawn Commitment</td><td>{{ undrawn_committed_capital }}</td></tr>
                     <tr class="border-bottom"><td>Distributions</td><td><a href="#">{{ total_distributions }}</a></td></tr>
                     <tr class="border-bottom"><td>Management Fee % - <i>during Investment Period</i></td><td>{{fund.man_fee|percent:2}}</td></tr>
-                    <tr class="border-bottom"><td>Management Fee Basis - <i>during Investment Period</i></td><td>{{fund.man_fee|percent:2}}</td></tr>
+                    <tr class="border-bottom"><td>Management Fee Basis - <i>during Investment Period</i></td><td>Committed Capital</td></tr>
                     <tr class="border-bottom"><td>Management Fee % - <i>during Divestment Period</i></td><td>{{fund.man_fee|percent:2}}</td></tr>
-                    <tr class="border-bottom"><td>Management Fee Basis - <i>during Divestment Period</i></td><td>{{fund.man_fee|percent:2}}</td></tr>      
+                    <tr class="border-bottom"><td>Management Fee Basis - <i>during Divestment Period</i></td><td>Unrealised Investment Acquisition Costs (net of write offs)</td></tr>      
                 </tbody>
             </table>
         </div>
@@ -221,13 +220,13 @@
                 <div style="text-align: right; margin-bottom: 10px;">
                     <a href="?export=excel"><i class="fas fa-file-excel"></i></a>
                 </div>
-                <table class="table" style="width:100%">
+                <table class="table table-bordered" style="width:100%;">
                     <colgroup>
                         <col span="1" style="width: 50%;">
                         <col span="1" style="width: 30%;">
                         <col span="1" style="width: 20%;">
                     </colgroup>
-                    <thead class="table-header">
+                    <thead>
                         <th style="text-align:left">Investor</th>
                         <th style="text-align:right">Committed Capital</th>
                         <th style="text-align:center">Fund Interest</th>
@@ -259,7 +258,7 @@
 
         <div class="row">
             <div class="col-md-12 mt-10">
-                <table class="table">
+                <table class="table table-bordered">
                     <colgroup>
                         <col span="1" style="width: 28%;">
                         <col span="1" style="width: 6%;">
@@ -270,16 +269,16 @@
                         <col span="1" style="width: 9%;">
                         <col span="1" style="width: 9%;">
                     </colgroup>
-                    <thead class="border-bottom">
-                        <tr class="" style="font-weight:bold">
-                            <td align="left">Investor</td>
-                            <td align="center">Fund Interest</td>
-                            <td align="right">Contributions</td>
-                            <td align="right">Distributions</td>
-                            <td align="right">Operating Income</td>
-                            <td align="right">Operating Expenses</td>
-                            <td align="right">Unrealised Gains/(Losses)</td>
-                            <td align="right"><strong>Net Asset Value</strong></td>
+                    <thead>
+                        <tr>
+                            <th style="text-align:left">Investor</th>
+                            <th style="text-align:center">Fund Interest</th>
+                            <th style="text-align:right">Contributions</th>
+                            <th style="text-align:right">Distributions</th>
+                            <th style="text-align:right">Operating Income</th>
+                            <th style="text-align:right">Operating Expenses</th>
+                            <th style="text-align:right">Unrealised Gains/(Losses)</th>
+                            <th style="text-align:right"><strong>Net Asset Value</strong></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -317,11 +316,9 @@
 
         <div class="row">
             <div class="col-md-12 mt-10">
-                <table class="table">
+                <table class="table table-bordered">
                     <colgroup>
-                        <col span="1" style="width: 18%;">
-                        <col span="1" style="width: 5%;">
-                        <col span="1" style="width: 5%;">
+                        <col span="1" style="width: 20%;">
                         <col span="1" style="width: 8%;">
                         <col span="1" style="width: 8%;">
                         <col span="1" style="width: 8%;">
@@ -329,21 +326,21 @@
                         <col span="1" style="width: 8%;">
                         <col span="1" style="width: 8%;">
                         <col span="1" style="width: 8%;">
-                        <col span="1" style="width: 4%;">
-                        <col span="1" style="width: 4%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
                     </colgroup>
-                    <thead class="border-bottom">
-                        <tr class="" style="font-weight:bold">
-                            <td align="left">Company name</td>
-                            <td align="center">Security Type</td>
-                            <td align="center">Initial Investment Date</td>
-                            <td align="right">Fund Commitment</td>
-                            <td align="right">Total Invested</td>
-                            <td align="right">Current Cost</td>
-                            <td align="right">Reported Value</td>
-                            <td align="center">Realised Proceeds</td>
-                            <td align="center">IRR</td>
-                            <td align="center">MOIC</td>
+                    <thead>
+                        <tr>
+                            <th style="text-align:left">Company name</th>
+                            <th style="text-align:center">Security Type</th>
+                            <th style="text-align:right">Investment Date</th>
+                            <th style="text-align:right">Fund Commitment</th>
+                            <th style="text-align:right">Total Invested</th>
+                            <th style="text-align:right">Current Cost</th>
+                            <th style="text-align:right">Reported Value</th>
+                            <th style="text-align:right">Realised Proceeds</th>
+                            <th style="text-align:center">IRR</th>
+                            <th style="text-align:center">MOIC</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -353,7 +350,7 @@
                             <td align="left">{{investment.company}}</td>
                             <td align="center">{{investment.instrument}}</td>
                             <td align="center"></td>
-                            <td align="right">1{{investment.committed_amount}}</td>
+                            <td align="right">{{investment.committed_amount}}</td>
                             <td align="right">{{investment.invested_amount}}</td>
                             <td align="right"></td>
                             <td align="right"></td>

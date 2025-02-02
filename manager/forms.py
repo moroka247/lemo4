@@ -28,12 +28,17 @@ class ContactForm(forms.ModelForm):
         model = Contact
         fields= ['primary_contact','name','surname','phone_number','email_address','investor']
 
-ContactFormSet = inlineformset_factory(Investor, Contact, form=ContactForm, extra=1, can_delete=True)
+ContactFormSet = inlineformset_factory(Investor, Contact, form=ContactForm, extra=1)
 
 class CommittedCapitalForm(forms.ModelForm):
     class Meta:
         model = CommittedCapital
-        fields = ['investor', 'amount']
+        fields = ['date','investor', 'amount']
+        widgets = {
+            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'investor': forms.Select(attrs={'class': 'form-select'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control text-right', 'placeholder': '0.00'}),
+        }
 
 CommittedCapitalFormSet = modelformset_factory(CommittedCapital, form=CommittedCapitalForm, extra=0)
 

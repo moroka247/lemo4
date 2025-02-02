@@ -16,3 +16,7 @@ def div(value, arg):
         return float(value) / float(arg)
     except (ValueError, ZeroDivisionError):
         return None
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key, [])

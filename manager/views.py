@@ -24,6 +24,8 @@ import pandas as pd
 from django.db.models import Q
 from django.core.paginator import Paginator
 from django.shortcuts import render
+from django.db import transaction
+from collections import defaultdict
 
 # API Views
 class CurrencyViewSet(ModelViewSet):
@@ -522,20 +524,20 @@ class DeleteCompany(DeleteView):
     template_name = "companies/confirm_delete.html"
     success_url = reverse_lazy('companies')  
 
-#Calculation and other views
+# Fund Close
 class CommittedCapitalCreateView(FormView):
     form_class = CommittedCapitalFormSet
     template_name = 'funds/fund_close4.html'
     success_url = reverse_lazy('funds')
-    print('888888888888888888888888888888888***********************************8888888888')
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         committedCapital = CommittedCapital.objects.all()
        
         if self.request.POST:
-            context['formset'] = CommittedCapitalFormSet(self.request.POST, queryset=committedCapital)
+            context['formset'] = CommittedCapitalFormSet(self.request.POST)
         else:
-            context['formset'] = CommittedCapitalFormSet(self.request.POST, queryset=committedCapital)
+            context['formset'] = CommittedCapitalFormSet(queryset=committedCapital)
 
         context['fund'] = get_object_or_404(Fund, pk=self.kwargs['pk'])
         return context
@@ -557,6 +559,7 @@ class CommittedCapitalCreateView(FormView):
             try:
                 data = json.loads(summary_data)
                 for item in data:
+                    date = item.get('date')
                     investor_name = item.get('investor')
                     amount = float(item.get('amount'))
 
@@ -567,7 +570,8 @@ class CommittedCapitalCreateView(FormView):
                     CommittedCapital.objects.create(
                         fund=fund,
                         investor=investor,
-                        amount=amount
+                        amount=amount,
+                        date = date
                     )                    
             except json.JSONDecodeError:
                 print('Error decoding JSON data')  # Debugging statement
@@ -575,7 +579,6 @@ class CommittedCapitalCreateView(FormView):
             return redirect(self.success_url)
         else:
             return self.render_to_response(self.get_context_data(form=form))
-
 
 class CommittedCapitalDelete(View):
     def delete(self, request, *args, **kwargs):
@@ -590,6 +593,14 @@ class CommittedCapitalDelete(View):
 
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+# Fund Close Simple Approach
+
+class FundCloseView(DetailView):
+    model = Fund
+    template_name = 'funds/fund_close5.html'
+    context_object_name = 'fund'
 
 
 

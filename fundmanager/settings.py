@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'debug_toolbar',
+    'widget_tweaks',
 
     #own apps
     'manager',

@@ -91,17 +91,12 @@ class Fund(models.Model):
 
 class FundClose(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
-    investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
-    series_number = models.SmallIntegerField(null=False)
-    amount = models.DecimalField(max_digits=12,decimal_places=2,default=0.00)
-    prudencial_limit = models.DecimalField(max_digits=3, decimal_places=2,default=0.00)
-    limit_amount = models.DecimalField(max_digits=12,decimal_places=2,default=0.00)
-    committment = models.DecimalField(max_digits=12,decimal_places=2, default=0.00)
-    fund_interest = models.DecimalField(max_digits=3,decimal_places=2,default=0.00)
-    created_at = models.DateTimeField(auto_now_add=True)
+    close_date = models.DateField(auto_now=False)
+    series_number = models.SmallIntegerField(null=False, default=0)
+    final_close = models.BooleanField(default=False)
 
     def __str__(self):
-        return str(self.fund) + ' | ' + str(self.investor) + ' | ' + str(self.series_number)
+        return str(self.fund) + ' | ' + str(self.series_number)
     
 class CallType(models.Model):
     name = models.CharField(max_length=100)
@@ -140,6 +135,8 @@ class CommittedCapital(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12,decimal_places=2)
+    date = models.DateField(auto_now=False)
+    final_close = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.fund) + ' | ' + str(self.investor)

@@ -1,39 +1,112 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 {% load custom_filters %}
+{% load widget_tweaks %}
 
 {% block title %}
     Capital Call | {{ fund.name }}
 {% endblock title %}
 
 {% block content %}
-
 <div class="container">
-    <div class="row my-5">
-        <div class="col-md-8"> <h4><b>Capital Call | {{ fund.name }}</b></h4></div>
-    
-        <div align="right" class="col-md-4">        
-            <a href="{% url 'funds' %}" class="btn btn-outline-success" style="height:30px;width:200px;padding:2px">
-                <i class="fas fa-step-backward"> Back to funds</i>
-            </a>
+    <div class="row my-2">
+        <div class="col-md-12">
+            <h4><b>Capital Call | {{ fund.name }}</b></h4>
+            <hr>
         </div>
     </div>
 </div>
 
+<font size="1">
 <div class="container">
     <form method="post">
         {% csrf_token %}
 
-        <!-- Date Input (Single Widget) -->
-        <div class="form-group">
-            <label for="id_date">Notice Date:</label>
-            {{ formset.forms.0.date }}
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle" style="width: 100%; max-width: 600px;">
+                <tbody>
+                    <!-- Notice Date -->
+                    <tr style="padding:0px;">
+                        <td style="vertical-align: middle; width: 40%; font-weight: bold;"><label for="id_date">Notice Date:</label></td>
+                        <td style="width: 60%;">
+                            <div class="input-group input-group-sm">
+                                {{ formset.forms.0.date|add_class:"form-control" }}
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Increment Days -->
+                    <tr style="padding:0px;">
+                        <td style="vertical-align: middle; font-weight: bold;"><label for="increment-days">Increment (Business Days):</label></td>
+                        <td>
+                            <input 
+                                type="number" 
+                                id="increment-days" 
+                                name="increment_days" 
+                                class="form-control form-control-sm" 
+                                value="10" 
+                                min="0"
+                            >
+                        </td>
+                    </tr>
+
+                    <!-- Calculated Date -->
+                    <tr>
+                        <td style="vertical-align: middle; font-weight: bold;"><label for="calculated-date">Calculated Date:</label></td>
+                        <td>
+                            <input 
+                                type="text" 
+                                id="calculated-date" 
+                                name="calculated_date" 
+                                class="form-control form-control-sm" 
+                                readonly
+                            >
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Capital Call Formset -->
-        <table class="table table-borderless table-sm" cellspacing="1px">
+        <div class="table-responsive mt-3" style="max-width: 600px;">
+            <table class="table table-bordered table-sm align-middle" style="width: 100%;">
+                <tbody id="formset-body">
+                    {{ formset.management_form }}
+                    {% for form in formset %}
+                        <tr class="form-row">
+                            <td style="vertical-align: middle; font-weight: bold;">{{ form.call_type.label }}</td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    {{ form.call_type|add_class:"form-control" }}
+                                </div>
+                            </td>
+                            <td style="vertical-align: middle; font-weight: bold;">{{ form.amount.label }}</td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    {{ form.amount|add_class:"form-control" }}
+                                </div>
+                            </td>
+                            {% for commitment in committed_capitals %}
+                                <td style="vertical-align: middle;">
+                                    <!-- Example: Add a readonly input field for calculated values -->
+                                    <input 
+                                        type="text" 
+                                        value="{{ commitment.value }}" 
+                                        class="form-control form-control-sm" 
+                                        readonly
+                                    >
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Capital Call Summary -->
+        <table class="table table-bordered table-sm mt-3" cellspacing="1px">
             <thead class="border-bottom">
-                <tr class="" style="font-weight:bold">
+                <tr style="font-weight:bold">
                     <th></th>
                     <th style="text-align:right">Total</th>
                     {% for account in capital_accounts %}
@@ -41,31 +114,31 @@
                     {% endfor %}
                 </tr>
                 <tr>
-                    <th>Committed Capital</th>
-                    <th style="text-align:right">{{ total_committed }}</th>
+                    <td style="font-weight: bold;">Committed Capital</td>
+                    <td style="font-weight: bold; text-align:right;">{{ total_committed }}</td>
                     {% for account in capital_accounts %}
-                        <th style="text-align:right">{{ account.commitment|floatformat:2 }}</th>
+                        <td style="font-weight: bold; text-align:right;">{{ account.commitment|floatformat:2 }}</td>
                     {% endfor %}
                 </tr>
                 <tr>
-                    <th>Percentage</th>
-                    <th style="text-align:right">{{ total_interests|percent:2 }}</th>
+                    <td style="font-style:italic;">Fund Interest</td>
+                    <td style="font-style:italic; text-align:right;">{{ total_interests|percent:2 }}</td>
                     {% for account in capital_accounts %}
-                    <th style="text-align:right">{{ account.fund_interest|percent:2 }}</th>
+                        <td style="font-style:italic; text-align:right;">{{ account.fund_interest|percent:2 }}</td>
                     {% endfor %}
                 </tr>
                 <tr>
-                    <th>Capital Drawn to Date</th>
-                    <th style="text-align:right">{{ total_drawn_sum }}</th>
+                    <td style="font-weight: bold;">Capital Drawn to Date</td>
+                    <td style="font-weight: bold; text-align:right;">{{ total_drawn_sum }}</td>
                     {% for account in capital_accounts %}
-                    <th style="text-align:right">{{ account.drawn_amount }}</th>
+                        <td style="font-weight: bold; text-align:right;">{{ account.drawn_amount }}</td>
                     {% endfor %}
                 </tr>
                 <tr>
-                    <th>Undrawn Commitment</th>
-                    <th style="text-align:right">{{ total_undrawn_commitment|floatformat:2 }}</th>
+                    <td style="font-weight: bold;">Undrawn Commitment</td>
+                    <td style="font-weight: bold; text-align:right;">{{ total_undrawn_commitment|floatformat:2 }}</td>
                     {% for account in capital_accounts %}
-                        <th style="text-align:right">{{ account.undrawn_commitment|floatformat:2 }}</th>
+                        <td style="font-weight: bold; text-align:right;">{{ account.undrawn_commitment|floatformat:2 }}</td>
                     {% endfor %}
                 </tr>
             </thead>
@@ -73,45 +146,62 @@
                 {{ formset.management_form }}
                 {% for form in formset %}
                     <tr class="form-row">
-                        <td>{{ form.call_type }}</td>
-                        <td>{{ form.amount }}</td>
+                        <td>{{ form.call_type|add_class:"form-control" }}</td>
+                        <td>{{ form.amount|add_class:"form-control" }}</td>
                         {% for commitment in committed_capitals %}
-                        <td><!-- Calculated value here --></td>
+                            <td><!-- Calculated value here --></td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <button type="button" id="add-row" class="btn btn-success">Add Row</button>
         <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 </div>
+</font>
 
 <script>
-document.getElementById('add-row').addEventListener('click', function() {
-    let formsetBody = document.getElementById('formset-body');
-    let formRow = formsetBody.querySelector('.form-row');
+// Function to calculate business days and update the calculated date
+function calculateBusinessDate(startDate, days) {
+    const date = new Date(startDate);
+    let remainingDays = days;
 
-    if (!formRow) {
-        console.error('No .form-row element found to clone.');
-        return;
+    while (remainingDays > 0) {
+        date.setDate(date.getDate() + 1);
+        const dayOfWeek = date.getDay();
+        // Skip weekends (Saturday=6, Sunday=0)
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            remainingDays--;
+        }
     }
 
-    let totalForms = document.getElementById('id_form-TOTAL_FORMS');
-    let formCount = parseInt(totalForms.value);
+    return date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+}
 
-    let newRow = formRow.cloneNode(true);
+// Event listener for increment-days input
+const incrementInput = document.getElementById('increment-days');
+const noticeDateInput = document.getElementById('id_date');
+const calculatedDateInput = document.getElementById('calculated-date');
 
-    newRow.querySelectorAll('input, select').forEach((input) => {
-        let name = input.name.replace(/-\d+-/, `-${formCount}-`);
-        let id = input.id.replace(/-\d+-/, `-${formCount}-`);
-        input.name = name;
-        input.id = id;
-        input.value = '';  // Clear the value
-    });
+incrementInput.addEventListener('input', function () {
+    const noticeDate = noticeDateInput.value;
+    const incrementDays = parseInt(incrementInput.value, 10) || 0;
 
-    formsetBody.appendChild(newRow);
-    totalForms.value = formCount + 1;
+    if (noticeDate) {
+        const calculatedDate = calculateBusinessDate(noticeDate, incrementDays);
+        calculatedDateInput.value = calculatedDate;
+    }
+});
+
+// Trigger calculation on page load if notice date is set
+window.addEventListener('DOMContentLoaded', function () {
+    const noticeDate = noticeDateInput.value;
+    const incrementDays = parseInt(incrementInput.value, 10) || 0;
+
+    if (noticeDate) {
+        const calculatedDate = calculateBusinessDate(noticeDate, incrementDays);
+        calculatedDateInput.value = calculatedDate;
+    }
 });
 </script>
 

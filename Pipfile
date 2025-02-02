@@ -17,6 +17,7 @@ django-debug-toolbar = "*"
 django-cors-headers = "*"
 pandas = "*"
 openpyxl = "*"
+django-widget-tweaks = "*"
 
 [dev-packages]
 

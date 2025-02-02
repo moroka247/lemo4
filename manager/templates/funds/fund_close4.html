@@ -11,7 +11,23 @@ Fund Close: {{ fund.name }}
     <h4>Committed Capital to {{ fund.name }}</h4>
 
     <!-- Input Form Section -->
-    <div class="row my-5">
+    <div class="row mt-5">
+        <div class="col-md-3">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Commitment Date</th>
+                    </tr>
+                </thead>
+                <tbody id="input-rows">
+                    <tr>
+                        <td>{{ formset.empty_form.date }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="row my-3">
         <div class="col-md-6">
             <form id="input-form" method="post">
                 {% csrf_token %}
@@ -28,7 +44,7 @@ Fund Close: {{ fund.name }}
                             <td>{{ formset.empty_form.investor }}</td>
                             <td>{{ formset.empty_form.amount }}</td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-secondary" id="add-form">+</button>
+                                <button type="button" class="btn btn-sm btn-secondary" id="add-form">+ Add</button>
                             </td>
                         </tr>
                     </tbody>
@@ -39,7 +55,7 @@ Fund Close: {{ fund.name }}
     </div>
 
     <!-- Summary Section -->
-    <div class="row my-5">
+    <div class="row my-3">
         <div class="col-md-12">
             <h5>Summary</h5>
             <form id="summary-form" method="post">
@@ -47,10 +63,11 @@ Fund Close: {{ fund.name }}
                 <table class="table table-bordered">
                     <thead>
                         <tr>
+                            <th>Date</th>
                             <th>Investor</th>
-                            <th>Amount</th>
-                            <th>Percentage</th>
-                            <th>Actions</th>
+                            <th style="text-align:right">Amount</th>
+                            <th style="text-align:center">Percentage</th>
+                            <th style="text-align:center">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="summary-rows">
@@ -59,9 +76,10 @@ Fund Close: {{ fund.name }}
                     <tfoot>
                         <tr>
                             <th>Total</th>
-                            <th id="total-amount">0.00</th>
                             <th></th>
-                            <th></th>
+                            <th style="text-align:right" id="total-amount">0.00</th>
+                            <th style="text-align:center"></th>
+                            <th style="text-align:center"></th>
                         </tr>
                     </tfoot>
                 </table>
@@ -73,34 +91,6 @@ Fund Close: {{ fund.name }}
 </div>
 
 <style>
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    th, td {
-        padding: 5px;
-        text-align: left;
-        border: 1px solid #ddd;
-    }
-
-    .table.table-bordered thead th {
-        background-color: #417a59 !important; /* Dark green */
-        color: white !important; /* White text */
-    }
-
-    tfoot th {
-        font-weight: bold;
-        background-color: #f4f4f4;
-    }
-
-    .btn {
-        padding: 5px 10px;
-    }
-
-    #message {
-        margin-top: 10px;
-    }
 </style>
 
 <script>
@@ -137,7 +127,7 @@ Fund Close: {{ fund.name }}
         }
 
         // Function to add a new row to the summary table
-        function addToSummary(investor, amount) {
+        function addToSummary(date, investor, amount) {
             if (existingInvestors.has(investor)) {
                 messageElement.style.display = "block";
                 return;
@@ -147,6 +137,7 @@ Fund Close: {{ fund.name }}
 
             const row = document.createElement("tr");
             row.innerHTML = `
+                <td>${date}</td>
                 <td>${investor}</td>
                 <td class="amount">${amount}</td>
                 <td class="percentage">0.00%</td>
