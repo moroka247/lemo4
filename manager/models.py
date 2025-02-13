@@ -1,5 +1,10 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.shortcuts import reverse
+
+class CustomUser(AbstractUser):
+    email_address = models.EmailField(max_length=50,blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
 
 class InvestorType(models.Model):
     category = models.CharField(max_length=100)

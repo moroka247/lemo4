@@ -1,32 +1,21 @@
-{% extends "base.html" %}
-
-{% block title %}
-Investors List
-{% endblock title %}
-
-{% block content %}
 
 {% for investor_data in investors_data %}
-<tr class="border-bottom" style="cursor: pointer;">
+<tr class="border-bottom" onclick="window.location='{{ investor_data.investor.get_absolute_url }}';" style="cursor: pointer;">
     <td>{{ investor_data.investor.name }}</td>
     <td>{{ investor_data.investor.short_name }}</td>
     <td>{{ investor_data.investor.category }}</td>
-    <td>{{ investor_data.primary_contact.name }} {{ investor_data.primary_contact.surname }}</td>
+    <td>{{ investor_data.primary_contact.name }}&nbsp{{ investor_data.primary_contact.surname }}</td>
     <td>{{ investor_data.primary_contact.email_address }}</td>
     <td>{{ investor_data.primary_contact.phone_number }}</td>
     <td align="center">
         <a href="{% url 'edit_investor' pk=investor_data.investor.id %}" style="color: #28a745; font-size: 1rem;">
             <i class="fas fa-edit"></i>
-        </a>
+        </a>&nbsp;&nbsp;&nbsp;
         <a href="{% url 'delete_investor' pk=investor_data.investor.id %}" style="color: #dc3545; font-size: 1rem;">
             <i class="fas fa-trash-alt"></i>
         </a>
     </td>
 </tr>
 {% empty %}
-<tr>
-    <td colspan="7">No investors match your search.</td>
-</tr>
+<tr><td colspan="7">There are no investors to display</td></tr>
 {% endfor %}
-
-{% endblock content %}

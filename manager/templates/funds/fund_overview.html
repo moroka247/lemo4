@@ -234,15 +234,15 @@
                     {% if investors_data %}
                         {% for investor_data in investors_data %}
                         <tr>
-                            <td align="left">{{ investor_data.investor.name }}</td>
-                            <td align="right">{{ investor_data.committed_amount }}</td>
-                            <td align="center">{{ investor_data.fund_interest_committed|percent:2 }}</td>
+                            <td style="text-align:left">{{ investor_data.investor.name }}</td>
+                            <td style="text-align:right">{{ investor_data.committed_amount }}</td>
+                            <td style="text-align:center">{{ investor_data.fund_interest_committed|percent:2 }}</td>
                         </tr>
                         {% endfor %}
                     <tr>
-                        <td align="left"><strong>Total</strong></td>
-                        <td align="right"><strong>{{ total_committed_capital }}</strong></td>
-                        <td align="center"><strong>{{ total_fund_interest_committed|percent:2 }}</strong></td>
+                        <td style="text-align:left"><strong>Total</strong></td>
+                        <td style="text-align:right"><strong>{{ total_committed_capital }}</strong></td>
+                        <td style="text-align:center"><strong>{{ total_fund_interest_committed|percent:2 }}</strong></td>
                     </tr>
                     {% else %}
                         <tr><td><b> There are no investor commitments to display</b></td></tr>
@@ -284,25 +284,25 @@
                     <tbody>
                         {% for investor_data in investors_data %}
                         <tr>
-                            <td align="left">{{ investor_data.investor.name }}</td>
-                            <td align="center">{{ investor_data.fund_interest_called|percent:2 }}</td>
-                            <td align="right">{{ investor_data.investor_capital_calls }}</td>
-                            <td align="right">{{ investor_data.investor_distributions }}</td>
-                            <td align="right">{{ investor_data.investor_operating_income }}</td>
-                            <td align="right">{{ investor_data.investor_operating_expenses }}</td>
-                            <td align="right">{{ investor_data.investor_unrealised_gains_or_losses }}</td>
-                            <td align="right">{{ investor_data.investor_net_asset_value }}</td>
+                            <td style="text-align:left">{{ investor_data.investor.name }}</td>
+                            <td style="text-align:center">{{ investor_data.fund_interest_called|percent:2 }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_capital_calls }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_distributions }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_operating_income }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_operating_expenses }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_unrealised_gains_or_losses }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_net_asset_value }}</td>
                         </tr>
                         {% endfor %}
                         <tr class="total-row">
                             <td><strong>Total</strong></td>
-                            <td align="center"><strong>{{ total_fund_interest_called|percent:2 }}</strong></td>
-                            <td align="right"><strong>{{ total_drawn_capital }}</strong></td>
-                            <td align="right"><strong>{{ total_distributions }}</strong></td>
-                            <td align="right"><strong>{{ total_operating_income }}</strong></td>
-                            <td align="right"><strong>{{ total_operating_expenses }}</strong></td>
-                            <td align="right"><strong>{{ total_unrealosed_gains_or_losses }}</strong></td>
-                            <td align="right"><strong>{{ total_net_asset_value }}</strong></td>
+                            <td style="text-align:center"><strong>{{ total_fund_interest_called|percent:2 }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_drawn_capital }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_distributions }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_operating_income }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_operating_expenses }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_unrealised_gains_or_losses }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_net_asset_value }}</strong></td>
                         </tr>
                     </tbody>
 
@@ -347,16 +347,16 @@
                     {% if investments %}
                         {% for investment in investments %}
                         <tr>
-                            <td align="left">{{investment.company}}</td>
-                            <td align="center">{{investment.instrument}}</td>
-                            <td align="center"></td>
-                            <td align="right">{{investment.committed_amount}}</td>
-                            <td align="right">{{investment.invested_amount}}</td>
-                            <td align="right"></td>
-                            <td align="right"></td>
-                            <td align="center"></td>
-                            <td align="center">25%</td>
-                            <td align="center">2.0x</td>
+                            <td style="text-align:left">{{investment.company}}</td>
+                            <td style="text-align:center">{{investment.instrument}}</td>
+                            <td style="text-align:center"></td>
+                            <td style="text-align:right">{{investment.committed_amount}}</td>
+                            <td astyle="text-align:right">{{investment.invested_amount}}</td>
+                            <td style="text-align:right"></td>
+                            <td style="text-align:right"></td>
+                            <td style="text-align:center"></td>
+                            <td style="text-align:center">25%</td>
+                            <td style="text-align:center">2.0x</td>
                         </tr>
                         {% endfor %}
                     {% else %}
@@ -370,42 +370,291 @@
 
     <div role="tabpanel" class="tab-pane fade" id="performance">
         <h5>Performance</h5>
+
+        <div class="row">
+            <div class="col-md-12 mt-10">
+                <table class="table table-bordered">
+                    <colgroup>
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 4%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 8%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <td colspan="2" style="text-align:center"></td>
+                            <th colspan="4" style="text-align:center">Capital Calls</th>
+                            <th colspan="2" style="text-align:center">Distributions</th>
+                            <td colspan="1" style="text-align:center"></td>
+                        </tr>
+                        <tr>
+                            <th style="text-align:left">Notice Date</th>
+                            <th style="text-align:center">Notice #</th>
+                            <th style="text-align:right">Investments</th>
+                            <th style="text-align:right">Management Fees</th>
+                            <th style="text-align:right">Organisational Expenses</th>
+                            <th style="text-align:right">Operational Expenses</th>
+                            <th style="text-align:right">Income</th>
+                            <th style="text-align:right">Realisation Proceeds</th>
+                            <th style="text-align:right">Net Cash Flow</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% if investments %}
+                        {% for investment in investments %}
+                        <tr>
+                            <td style="text-align:left"></td>
+                            <td style="text-align:center"></td>
+                            <td style="text-align:right"></td>
+                            <td style="text-align:right"></td>
+                            <td astyle="text-align:right"></td>
+                            <td style="text-align:right"></td>
+                            <td style="text-align:right"></td>
+                            <td style="text-align:right"></td>
+                            <td style="text-align:right"></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="9">There are no cash flows to display</td></tr>
+                    {% endif%}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
     
     <div role="tabpanel" class="tab-pane fade" id="operations">
-        <div class="d-flex justify-content-between flex-wrap">
-            <div class="p-2" style="width: 18%; height: 120px;">
-                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'fund_close' pk=fund.id %}">
-                    <i class="fas fa-archive fa-2x"></i><br> Fund Close
-                </a>
-            </div>
-    
-            <div class="p-2" style="width: 18%; height: 120px;">
-                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'capital_call' pk=fund.id %}">
-                    <i class="fas fa-hand-holding-usd fa-2x"></i><br> Capital Call
-                </a>
-            </div>
-    
-            <div class="p-2" style="width: 18%; height: 120px;">
-                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
-                    <i class="fas fa-gift fa-2x"></i><br> Distribution
-                </a>
-            </div>
-    
-            <div class="p-2" style="width: 18%; height: 120px;">
-                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
-                    <i class="fas fa-money-check-alt fa-2x"></i><br> Disbursement
-                </a>
-            </div>
-    
-            <div class="p-2" style="width: 18%; height: 120px;">
-                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
-                    <i class="fas fa-cash-register fa-2x"></i><br> Proceeds
-                </a>
+
+        <div role="tabpanel" class="tab-pane fade show active" id="operations">
+            <!-- Sub-tabs Navigation -->
+            <ul class="nav nav-tabs" id="fundOperationsTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="fund_closes_tab" data-bs-toggle="tab" href="#fund_closes" role="tab">Fund Closes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="capital_calls_tab" data-bs-toggle="tab" href="#capital_calls" role="tab">Capital Calls</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="expenses_tab" data-bs-toggle="tab" href="#expenses" role="tab">Expenses</a>
+                </li>
+            </ul>
+
+            <!-- Sub-tabs Content -->
+            <div class="tab-content" id="fundOperationsContent">
+                <!-- Fund Close Content -->
+                <div class="tab-pane fade show active" id="fund_closes" role="tabpanel">
+                    <br>
+                    <p>The following table depicts the historical fund closes and the total committed capital for the Fund to date:</p>
+
+                    <div class="col-md-12">
+                        <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" style="width:80%;" href="{% url 'fund_close' pk=fund.id %}">
+                            <i class="fas fa-plus"> Create a New Fund Close</i>
+                        </a>
+                        <table class="table table-bordered" style="width:80%;">
+                            
+                            <thead>
+                                <th style="text-align:left">Investor</th>
+                                <th style="text-align:right">Total Committed</th>
+                                <th style="text-align:center">Fund Interest</th>
+                                {% for date in unique_dates %}
+                                <th style="text-align:right">{{ date }}</th>
+                                {% endfor %}
+                            </thead>
+                            {% if investors_data %}
+                                {% for investor_data in investors_data %}
+                                <tr>
+                                    <td style="text-align: left;">{{ investor_data.investor.name }}</td>
+                                    <td style="text-align: right;">{{ investor_data.committed_amount }}</td>
+                                    <td style="text-align: center;">{{ investor_data.fund_interest_committed|percent:2 }}</td>
+                                    {% for date in unique_dates %}
+                                    <td style="text-align: right; background-color:lightyellow;">
+                                        {{ investor_data.commitments_by_date|get_value:date|default:"-" }}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            <tr>
+                                <td style="text-align: left;"><strong>Total</strong></td>
+                                <td style="text-align: right;"><strong>{{ total_committed_capital }}</strong></td>
+                                <td style="text-align: center;"><strong>{{ total_fund_interest_committed|percent:2 }}</strong></td>
+                                {% for date in unique_dates %}
+                                <td style="text-align: right; background-color: lightyellow;"><strong>{{ total_commitments_by_date|get_value:date|default:"-" }}</strong></td>
+                                {% endfor %}
+
+                            </tr>
+                            {% else %}
+                                <tr><td><b> There are no investor commitments to display</b></td></tr>
+                            {% endif %}
+                        </table>
+                                               
+                    </div>
+                </div>
+
+                <!-- Capital Calls Content -->
+                <div class="tab-pane fade" id="capital_calls" role="tabpanel">
+                    <h5>Capital Calls</h5>
+                    <p>Details about capital calls will be displayed here.</p>
+                </div>
+
+                <!-- Expenses Content -->
+                <div class="tab-pane fade" id="expenses" role="tabpanel">
+                    <h5>Expenses</h5>
+                    <p>Details about expenses will be displayed here.</p>
+
+                    <div class="d-flex justify-content-between flex-wrap">
+                        <div class="p-2" style="width: 18%; height: 120px;">
+                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'fund_close' pk=fund.id %}">
+                                <i class="fas fa-archive fa-2x"></i><br> Fund Close
+                            </a>
+                        </div>
+                
+                        <div class="p-2" style="width: 18%; height: 120px;">
+                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'capital_call' pk=fund.id %}">
+                                <i class="fas fa-hand-holding-usd fa-2x"></i><br> Capital Call
+                            </a>
+                        </div>
+                
+                        <div class="p-2" style="width: 18%; height: 120px;">
+                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
+                                <i class="fas fa-gift fa-2x"></i><br> Distribution
+                            </a>
+                        </div>
+                
+                        <div class="p-2" style="width: 18%; height: 120px;">
+                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
+                                <i class="fas fa-money-check-alt fa-2x"></i><br> Disbursement
+                            </a>
+                        </div>
+                
+                        <div class="p-2" style="width: 18%; height: 120px;">
+                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
+                                <i class="fas fa-cash-register fa-2x"></i><br> Proceeds
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
+
     </div>
 
 </div>
 
+<style>
+
+    .form-container {
+        margin-top: 20px;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse; /* Ensures borders between table cells collapse */
+    }
+    
+    th, td {
+        padding: 8px;
+        border: 1px solid #ddd;
+        box-sizing: border-box;
+        text-align: left;
+    }
+    
+    table th {
+        font-weight: bold;
+        color: white;
+        background-color: #417a59;
+    }
+    
+    th.wide, td.wide {
+        width: 40%; /* Make the first column wider */
+    }
+    
+    th.narrow, td.narrow {
+        width: 20%; /* Make the second and third columns narrower and equal */
+    }
+    
+    .form-actions {
+        margin-top: 10px;
+    }
+    
+    .form-actions button {
+        margin-right: 5px;
+    }
+    
+    .total-row {
+        font-weight: bold;
+        background-color: #f4f4f4;
+    }
+    
+    .total-row td {
+        border-top: 1px solid #ddd;
+    }
+    
+    .delete-form {
+        cursor: pointer;
+        color: red;
+    }
+    
+    .delete-form:hover {
+        color: darkred;
+    }
+    
+    </style>
+    
+    <script>
+    
+    document.addEventListener('DOMContentLoaded', function () {
+        const addButton = document.getElementById('add-form');
+        const formRows = document.getElementById('form-rows');
+        const totalFormsInput = document.getElementById('id_form-TOTAL_FORMS');
+        const emptyFormTemplate = document.getElementById('empty-form').innerHTML;
+        const totalAmountElement = document.getElementById('total-amount');
+    
+        function calculateTotal() {
+            let total = 0;
+            // Adjusted selector for table cells within table rows
+            document.querySelectorAll('.form-row .narrow input').forEach(function (input) {
+                const value = parseFloat(input.value) || 0;
+                total += value;
+            });
+            totalAmountElement.textContent = total.toFixed(2);
+        }
+    
+        addButton.addEventListener('click', function () {
+            const formIdx = parseInt(totalFormsInput.value, 10);
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formIdx);
+            formRows.insertAdjacentHTML('beforeend', newFormHtml);
+            totalFormsInput.value = formIdx + 1;
+            calculateTotal();
+        });
+    
+        // Event delegation for delete button (within table rows)
+        formRows.addEventListener('click', function (event) {
+            if (event.target.classList.contains('delete-form')) {
+                event.target.closest('tr').remove(); // Changed .form-row to tr
+                calculateTotal();
+            }
+        });
+    
+        // Recalculate total on any input event within the table rows
+        formRows.addEventListener('input', function () {
+            calculateTotal();
+        });
+    });
+    
+    document.getElementById('numberInput').addEventListener('input', function (e) {
+        let value = e.target.value.replace(/,/g, ''); // Remove commas
+        if (!isNaN(value) && value !== '') {
+            e.target.value = Number(value).toLocaleString(); // Format with commas
+        }
+    });
+    
+    </script>
+    
 {% endblock content %}

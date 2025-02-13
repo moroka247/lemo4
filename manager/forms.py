@@ -33,14 +33,13 @@ ContactFormSet = inlineformset_factory(Investor, Contact, form=ContactForm, extr
 class CommittedCapitalForm(forms.ModelForm):
     class Meta:
         model = CommittedCapital
-        fields = ['date','investor', 'amount']
+        fields = ['investor', 'amount']
         widgets = {
-            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'investor': forms.Select(attrs={'class': 'form-select'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control text-right', 'placeholder': '0.00'}),
         }
 
-CommittedCapitalFormSet = modelformset_factory(CommittedCapital, form=CommittedCapitalForm, extra=0)
+CommittedCapitalFormSet = modelformset_factory(CommittedCapital, form=CommittedCapitalForm, extra=1, can_delete=True)
 
 class CapitalCallForm(forms.ModelForm):
     class Meta:
@@ -60,29 +59,3 @@ CapitalCallFormSet = modelformset_factory(
     extra=1,
     can_delete=True
 )
-
-class FundCloseForm(forms.Form):
- 
-    investor_name = forms.ModelChoiceField(
-        queryset= Investor.objects.all(),
-        empty_label= "Select an investor",
-        widget = forms.Select,
-    )
-
-    commitment_amount = forms.DecimalField(max_digits=12,decimal_places=2, required=True)
-
-    def clean(self):
-        cleaned_data = super().clean()
-        investor = cleaned_data.get('investor_name')
-        commitment_amount = cleaned_data.get('commitment_amount')
-
-        if not investor and not commitment_amount:
-            raise forms.ValidationError('Either investor name or commitment amount must be provided.')
-
-        if investor and not commitment_amount:
-            raise forms.ValidationError('Please insert commitment amount')
-        
-        if commitment_amount and not investor:
-            raise forms.ValidationError('Please select an investor')
-
-        return cleaned_data

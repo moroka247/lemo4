@@ -1,4 +1,3 @@
-from django.forms import BaseModelForm
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.contrib import messages
@@ -10,8 +9,6 @@ from django.views.generic import View, ListView, DetailView, CreateView, UpdateV
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.response import Response
-from rest_framework import status
 from .filters import FundFilter
 from .pagination import DefaultPagination
 from .models import * 
@@ -26,6 +23,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import render
 from django.db import transaction
 from collections import defaultdict
+from django.forms import formset_factory
 
 # API Views
 class CurrencyViewSet(ModelViewSet):
@@ -168,35 +166,82 @@ class FundDetail(DetailView):
         context = super().get_context_data(**kwargs)
         fund = self.object
 
-        # Calculate committed capital
-        committed_capital = CommittedCapital.objects.filter(fund=fund).values('investor').annotate(investor_commitment=Sum('amount')).values('investor','investor_commitment')
-        total_committed_capital = CommittedCapital.objects.filter(fund=fund).aggregate(total_committed=Sum('amount'))['total_committed'] or 0
+        investor_data = defaultdict(lambda: {"total_commitment": 0, "dates": {}})
+        total_commitments_by_date = defaultdict(lambda: 0)
+        unique_dates = set()
 
-        # Calculate drawn capital
-        drawn_capital = CapitalCall.objects.filter(fund=fund).values('investor').annotate(investor_drawn_capital=Sum('amount'))
-        total_drawn_capital = CapitalCall.objects.filter(fund=fund).aggregate(total_drawn=Sum('amount'))['total_drawn'] or 0
+        # 1️⃣ Get committed capital grouped by investor & date
+        investor_commitments_by_date = (
+            CommittedCapital.objects
+            .filter(fund=fund)
+            .values('investor', 'date')
+            .annotate(investor_close_amount=Sum('amount'))
+            .order_by('date')
+        )
 
-        # Calculate undrawn capital
+        unique_dates = set()
+        for record in investor_commitments_by_date:
+            investor_id = record['investor']
+            date = record['date']
+            committed_on_date = record['investor_close_amount']
+            investor_data[investor_id]["dates"][date] = committed_on_date
+            total_commitments_by_date[date] += committed_on_date
+            unique_dates.add(date)
+
+        # 2️⃣ Get total committed capital per investor
+        committed_capital = (
+            CommittedCapital.objects
+            .filter(fund=fund)
+            .values('investor')
+            .annotate(total_commitment=Sum('amount'))
+        )
+
+        for record in committed_capital:
+            investor_id = record["investor"]
+            investor_data[investor_id]["total_commitment"] = record["total_commitment"]
+
+        # 3️⃣ Get total committed capital for the entire fund
+        total_committed_capital = (
+            CommittedCapital.objects
+            .filter(fund=fund)
+            .aggregate(total_committed=Sum('amount'))
+            .get('total_committed', 0) or 0
+        )
+
+        # 4️⃣ Get drawn capital per investor and total drawn capital
+        drawn_capital = (
+            CapitalCall.objects
+            .filter(fund=fund)
+            .values('investor')
+            .annotate(investor_drawn_capital=Sum('amount'))
+        )
+
+        investor_drawn_capital_map = {item['investor']: item['investor_drawn_capital'] for item in drawn_capital}
+
+        total_drawn_capital = (
+            CapitalCall.objects
+            .filter(fund=fund)
+            .aggregate(total_drawn=Sum('amount'))
+            .get('total_drawn', 0) or 0
+        )
+
+        # 5️⃣ Compute undrawn capital
         undrawn_committed_capital = total_committed_capital - total_drawn_capital
 
-        # Initialize variables
+        # 6️⃣ Initialize variables for fund-wide totals
+        total_capital_calls = total_distributions = total_operating_income = 0
+        total_operating_expenses = total_unrealised_gains_or_losses = total_net_asset_value = 0
+        total_fund_interest_committed = total_fund_interest_called = 0
+
+        # 7️⃣ Process investor-level calculations
         investors_data = []
 
-        total_capital_calls = 0
-        total_distributions = 0
-        total_operating_income = 0
-        total_operating_expenses = 0
-        total_unrealised_gains_or_losses = 0
-        total_net_asset_value = 0
-        total_fund_interest_committed = 0
-        total_fund_interest_called = 0
+        for investor_id, data in investor_data.items():
+            investor = Investor.objects.get(id=investor_id)
+            committed_amount = data["total_commitment"]
+            investor_capital_calls = investor_drawn_capital_map.get(investor_id, 0)
 
-        for invested in committed_capital:
-            investor = Investor.objects.get(id = invested['investor'])
-            committed_amount = invested['investor_commitment']
-
-            investor_capital_calls = CapitalCall.objects.filter(fund=fund, investor=investor).aggregate(total_called=Sum('amount'))['total_called'] or 0
-            investor_distributions = Distribution.objects.filter(fund=fund, investor=investor).aggregate(total_distributted=Sum('amount'))['total_distributted'] or 0
+            investor_distributions = Distribution.objects.filter(fund=fund, investor=investor).aggregate(total_distributed=Sum('amount'))['total_distributed'] or 0
             investor_operating_income = OperatingIncome.objects.filter(fund=fund, investor=investor).aggregate(total_income=Sum('amount'))['total_income'] or 0
             investor_operating_expenses = OperatingExpense.objects.filter(fund=fund, investor=investor).aggregate(total_expenses=Sum('amount'))['total_expenses'] or 0                   
             investor_unrealised_gains = UnrealisedGains.objects.filter(fund=fund, investor=investor).aggregate(total_unrealised_gains=Sum('amount'))['total_unrealised_gains'] or 0                   
@@ -204,31 +249,34 @@ class FundDetail(DetailView):
 
             investor_unrealised_gains_or_losses = investor_unrealised_gains - investor_unrealised_losses
 
+            # Update fund-wide totals
             total_capital_calls += investor_capital_calls
             total_distributions += investor_distributions
             total_operating_income += investor_operating_income
             total_operating_expenses += investor_operating_expenses
             total_unrealised_gains_or_losses += investor_unrealised_gains_or_losses
 
-            investor_net_asset_value = investor_capital_calls - investor_distributions + investor_operating_income + investor_operating_expenses + investor_unrealised_gains_or_losses
+            investor_net_asset_value = (
+                investor_capital_calls - investor_distributions +
+                investor_operating_income - investor_operating_expenses +
+                investor_unrealised_gains_or_losses
+            )
             total_net_asset_value += investor_net_asset_value
 
             # Calculate Fund interest based on committed capital
-            if total_committed_capital > 0:
-                fund_interest_committed = committed_amount / total_committed_capital
-            else:
-                fund_interest_committed = 0
+            fund_interest_committed = (
+                committed_amount / total_committed_capital if total_committed_capital > 0 else 0
+            )
 
             # Calculate Fund interest based on called capital
-            if total_drawn_capital > 0:
-                fund_interest_called = investor_capital_calls / total_drawn_capital
-            else:
-                fund_interest_called = 0 
+            fund_interest_called = (
+                investor_capital_calls / total_drawn_capital if total_drawn_capital > 0 else 0
+            )
 
             total_fund_interest_committed += fund_interest_committed
             total_fund_interest_called += fund_interest_called
 
-            # Add to context dataset
+            # Append investor data
             investors_data.append({
                 'investor': investor,
                 'committed_amount': committed_amount,
@@ -240,10 +288,14 @@ class FundDetail(DetailView):
                 'investor_net_asset_value': investor_net_asset_value,
                 'fund_interest_committed': fund_interest_committed,
                 'fund_interest_called': fund_interest_called,
+                'commitments_by_date': data["dates"],  # Store commitments grouped by date
             })
 
+        # 8️⃣ Update context with all computed data
         context.update({
             'investors_data': investors_data,
+            'unique_dates': unique_dates,
+            'total_commitments_by_date': dict(total_commitments_by_date),
             'total_committed_capital': total_committed_capital,
             'total_drawn_capital': total_drawn_capital,
             'undrawn_committed_capital': undrawn_committed_capital,
@@ -251,11 +303,12 @@ class FundDetail(DetailView):
             'total_distributions': total_distributions,
             'total_operating_income': total_operating_income,
             'total_operating_expenses': total_operating_expenses,
-            'total_unrealosed_gains_or_losses': total_unrealised_gains_or_losses,
+            'total_unrealised_gains_or_losses': total_unrealised_gains_or_losses,
             'total_net_asset_value': total_net_asset_value,
             'total_fund_interest_committed': total_fund_interest_committed,
             'total_fund_interest_called': total_fund_interest_called,
         })
+
         return context
 
     #Functionality to export to Excel
@@ -527,7 +580,7 @@ class DeleteCompany(DeleteView):
 # Fund Close
 class CommittedCapitalCreateView(FormView):
     form_class = CommittedCapitalFormSet
-    template_name = 'funds/fund_close4.html'
+    template_name = 'funds/fund_close2.html'
     success_url = reverse_lazy('funds')
 
     def get_context_data(self, **kwargs):
@@ -597,12 +650,36 @@ class CommittedCapitalDelete(View):
 
 # Fund Close Simple Approach
 
-class FundCloseView(DetailView):
-    model = Fund
-    template_name = 'funds/fund_close5.html'
-    context_object_name = 'fund'
+class FundCloseView(FormView):
+    template_name = "funds/fund_close2.html"
 
+    def get(self, request, pk):
+        fund = get_object_or_404(Fund, pk=pk)
+        CommittedCapitalFormSet = formset_factory(CommittedCapitalForm, extra=1, can_delete=True)
+        formset = CommittedCapitalFormSet()
+        return render(request, self.template_name, {"fund": fund, "formset": formset})
 
+    def post(self, request, pk):
+        fund = get_object_or_404(Fund, pk=pk)
+        CommittedCapitalFormSet = formset_factory(CommittedCapitalForm, extra=1, can_delete=True)
+        formset = CommittedCapitalFormSet(request.POST)
+
+        commitment_date = request.POST.get('commitment_date')
+
+        if formset.is_valid():
+            for form in formset:
+                if form.cleaned_data:
+                    committed_capital = form.save(commit=False)
+                    committed_capital.fund = fund
+                    committed_capital.date = commitment_date
+                    committed_capital.save()
+
+            return redirect("fund_close", pk=fund.pk)
+        
+        else:
+            for form in formset:
+                print(formset.errors)  # If there are errors, print them
+            return render(request, self.template_name, {"fund": fund, "formset": formset})
 
 # Using Json for committed capital
 class CommittedCapitalSubmitView(View):

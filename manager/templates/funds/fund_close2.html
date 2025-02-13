@@ -9,18 +9,36 @@ Fund Close: {{ fund.name }}
 
 <div class="container">
     <h4>Committed Capital to {{ fund.name }}</h4>
-    <div class="row my-5">
+    
+    <div class="row my-2">
         <form method="post">
             {% csrf_token %}
-            
+                    
             {{ formset.management_form }}
             
-            <div class="form-container">
+            <div class="row mt-5">
+                <div class="col-md-3">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Commitment Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="input-rows">
+                            <tr>
+                                <td><input type="date" name="commitment_date" class="form-control" required></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="form-container" style="width: 80%;">
                 <!-- Header Row -->
                 <div class="form-header">
                     <div class="form-header-item wide">Investor</div>
                     <div class="form-header-item narrow">Amount</div>
-                    <div class="form-header-item narrow">Actions</div>
+                    <div class="form-header-item narrow"></div>
                 </div>
 
                 <!-- Form Rows -->
@@ -28,7 +46,7 @@ Fund Close: {{ fund.name }}
                     {% for form in formset %}
                         <div class="form-row" data-form-index="{{ forloop.counter0 }}">
                             <div class="form-item wide">{{ form.investor }}</div>
-                            <div class="form-item narrow">{{ form.amount }}</div>
+                            <div class="form-item narrow" style="text-align: right;">{{ form.amount }}</div>
                             <div class="form-item narrow">
                                 <button type="button" class="btn btn-sm btn-danger delete-form">-</button>
                             </div>
