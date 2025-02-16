@@ -31,11 +31,12 @@
     <div class="top-nav">
         <div class="brand"><h5>LEMO</h5></div>
         <div>
+            {{ user.name }} {{ user.surname}}
             <a href="#"><i class="fas fa-user"></i></a>
             <a href="#"><i class="fas fa-cog"></i></a>
-            <a href="#"><i class="fas fa-sign-out-alt"></i></a>
+            <a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i></a>
         </div>
-    </div>
+    </div> 
 
     <div class="sidebar" id="sidebar">
         <div>

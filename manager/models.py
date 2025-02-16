@@ -2,10 +2,6 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.shortcuts import reverse
 
-class CustomUser(AbstractUser):
-    email_address = models.EmailField(max_length=50,blank=True, null=True)
-    phone_number = models.CharField(max_length=15, blank=True, null=True)
-
 class InvestorType(models.Model):
     category = models.CharField(max_length=100)
 
@@ -94,6 +90,9 @@ class Fund(models.Model):
     def get_absolute_url(self):
         return reverse('fund_detail', kwargs={'pk':self.pk})
 
+class FundParameter():
+    pass
+
 class FundClose(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     close_date = models.DateField(auto_now=False)
@@ -119,7 +118,7 @@ class DistributionType(models.Model):
     name = models.CharField(max_length=100)
 
     def __str__(self):
-        return str(self.type)
+        return str(self.name)
 
 class AllocationRule(models.Model):
     name = models.CharField(max_length=100)
@@ -131,10 +130,11 @@ class AllocationRule(models.Model):
 class NoticeNumber(models.Model):
     date = models.DateField(auto_now=False)
     fund = models.ForeignKey(Fund, on_delete=models.CASCADE)
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE)
     number = models.SmallIntegerField(default=500)
 
     def __str__(self):
-        return str(self.number) + ' | ' + str(self.fund)
+        return str(self.number) + ' | ' + str(self.fund) + ' | ' + str(self.investor)
 
 class CommittedCapital(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)

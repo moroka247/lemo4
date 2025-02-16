@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}
 Funds home
@@ -38,6 +39,9 @@ Funds home
                 <th style="text-align:right">Committed Capital</th>
                 <th style="text-align:right">Drawn Down</th>
                 <th style="text-align:right">Undrawn</th>
+                <th style="text-align:right">Distributions</th>
+                <th style="text-align:center">IRR</th>
+                <th style="text-align:center">TVPI</th>
                 <th style="text-align:right">Actions</th>
             </tr>
         </thead>
@@ -46,11 +50,14 @@ Funds home
             {% for fund_data in funds_data %}
             <tr class="border-bottom" onclick="window.location='{{fund_data.fund.get_absolute_url}}';" style="cursor: pointer;">
                 <td >{{fund_data.fund.name}}</td>
-                <td align="center">{{ fund_data.fund.currency }}</td>
-                <td align="right">{{ fund_data.committed_capital }}</td>
-                <td align="right">{{ fund_data.called_capital }}</td>
-                <td align="right">{{ fund_data.undrawn_commitment }}</td>
-                <td align="center">
+                <td style="text-align: center;">{{ fund_data.fund.currency }}</td>
+                <td style="text-align: right;">{{ fund_data.committed_capital|bracket_negative }}</td>
+                <td style="text-align: right;">{{ fund_data.called_capital|negate|bracket_negative }}</td>
+                <td style="text-align: right;">{{ fund_data.undrawn_commitment|bracket_negative }}</td>
+                <td style="text-align: right;">{{ fund_data.distributions|bracket_negative }}</td>
+                <td style="text-align: center;">0.0%</td>
+                <td style="text-align: center;">1.00x</td>
+                <td style="text-align: right;">
                     <a href="{% url 'edit_fund' pk=fund_data.fund.id %}" style="color: #28a745; font-size: 1rem;">
                         <i class="fas fa-edit"></i>
                     </a> &nbsp;&nbsp;&nbsp;

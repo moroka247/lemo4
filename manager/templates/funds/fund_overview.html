@@ -260,7 +260,7 @@
             <div class="col-md-12 mt-10">
                 <table class="table table-bordered">
                     <colgroup>
-                        <col span="1" style="width: 28%;">
+                        <col span="1" style="width: 25%;">
                         <col span="1" style="width: 6%;">
                         <col span="1" style="width: 9%;">
                         <col span="1" style="width: 9%;">
@@ -286,23 +286,23 @@
                         <tr>
                             <td style="text-align:left">{{ investor_data.investor.name }}</td>
                             <td style="text-align:center">{{ investor_data.fund_interest_called|percent:2 }}</td>
-                            <td style="text-align:right">{{ investor_data.investor_capital_calls }}</td>
-                            <td style="text-align:right">{{ investor_data.investor_distributions }}</td>
-                            <td style="text-align:right">{{ investor_data.investor_operating_income }}</td>
-                            <td style="text-align:right">{{ investor_data.investor_operating_expenses }}</td>
-                            <td style="text-align:right">{{ investor_data.investor_unrealised_gains_or_losses }}</td>
-                            <td style="text-align:right">{{ investor_data.investor_net_asset_value }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_capital_calls|bracket_negative }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_distributions|bracket_negative }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_operating_income|bracket_negative }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_operating_expenses|bracket_negative }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_unrealised_gains_or_losses|bracket_negative }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_net_asset_value|bracket_negative }}</td>
                         </tr>
                         {% endfor %}
                         <tr class="total-row">
                             <td><strong>Total</strong></td>
                             <td style="text-align:center"><strong>{{ total_fund_interest_called|percent:2 }}</strong></td>
-                            <td style="text-align:right"><strong>{{ total_drawn_capital }}</strong></td>
-                            <td style="text-align:right"><strong>{{ total_distributions }}</strong></td>
-                            <td style="text-align:right"><strong>{{ total_operating_income }}</strong></td>
-                            <td style="text-align:right"><strong>{{ total_operating_expenses }}</strong></td>
-                            <td style="text-align:right"><strong>{{ total_unrealised_gains_or_losses }}</strong></td>
-                            <td style="text-align:right"><strong>{{ total_net_asset_value }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_drawn_capital|bracket_negative }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_distributions|bracket_negative }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_operating_income|bracket_negative }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_operating_expenses|bracket_negative }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_unrealised_gains_or_losses|bracket_negative }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_net_asset_value|bracket_negative }}</strong></td>
                         </tr>
                     </tbody>
 
@@ -350,8 +350,8 @@
                             <td style="text-align:left">{{investment.company}}</td>
                             <td style="text-align:center">{{investment.instrument}}</td>
                             <td style="text-align:center"></td>
-                            <td style="text-align:right">{{investment.committed_amount}}</td>
-                            <td astyle="text-align:right">{{investment.invested_amount}}</td>
+                            <td style="text-align:right">{{investment.committed_amount|bracket_negative}}</td>
+                            <td astyle="text-align:right">{{investment.invested_amount|bracket_negative}}</td>
                             <td style="text-align:right"></td>
                             <td style="text-align:right"></td>
                             <td style="text-align:center"></td>
@@ -369,21 +369,20 @@
     </div>
 
     <div role="tabpanel" class="tab-pane fade" id="performance">
-        <h5>Performance</h5>
 
         <div class="row">
             <div class="col-md-12 mt-10">
                 <table class="table table-bordered">
                     <colgroup>
-                        <col span="1" style="width: 8%;">
-                        <col span="1" style="width: 4%;">
-                        <col span="1" style="width: 8%;">
-                        <col span="1" style="width: 8%;">
-                        <col span="1" style="width: 8%;">
-                        <col span="1" style="width: 8%;">
-                        <col span="1" style="width: 8%;">
-                        <col span="1" style="width: 8%;">
-                        <col span="1" style="width: 8%;">
+                        <col span="1" style="width: 10%;">
+                        <col span="1" style="width: 6%;">
+                        <col span="1" style="width: 10%;">
+                        <col span="1" style="width: 10%;">
+                        <col span="1" style="width: 10%;">
+                        <col span="1" style="width: 10%;">
+                        <col span="1" style="width: 10%;">
+                        <col span="1" style="width: 10%;">
+                        <col span="1" style="width: 10%;">
                     </colgroup>
                     <thead>
                         <tr>
@@ -395,33 +394,45 @@
                         <tr>
                             <th style="text-align:left">Notice Date</th>
                             <th style="text-align:center">Notice #</th>
-                            <th style="text-align:right">Investments</th>
-                            <th style="text-align:right">Management Fees</th>
-                            <th style="text-align:right">Organisational Expenses</th>
-                            <th style="text-align:right">Operational Expenses</th>
-                            <th style="text-align:right">Income</th>
-                            <th style="text-align:right">Realisation Proceeds</th>
+
+                            {% for call_type in call_types %}
+                                <th style="text-align:right">{{ call_type }}</th>
+                            {% endfor %}
+
+                            {% for distribution_type in distribution_types %}
+                                <th style="text-align:right">{{ distribution_type }}</th>
+                            {% endfor %}
+
                             <th style="text-align:right">Net Cash Flow</th>
                         </tr>
                     </thead>
                     <tbody>
-                    {% if investments %}
-                        {% for investment in investments %}
+                        {% for date, notice_number, data in calls_n_distributions_table_rows %}
                         <tr>
-                            <td style="text-align:left"></td>
-                            <td style="text-align:center"></td>
-                            <td style="text-align:right"></td>
-                            <td style="text-align:right"></td>
-                            <td astyle="text-align:right"></td>
-                            <td style="text-align:right"></td>
-                            <td style="text-align:right"></td>
-                            <td style="text-align:right"></td>
-                            <td style="text-align:right"></td>
+                            <td style="text-align:left">{{ date | date:"d M Y" }}</td>
+                            <td style="text-align:center">{{ notice_number }}</td>
+                    
+                            {% for call_type in call_types %}
+                                <td style="text-align:right">{{ data.capital_calls|get_item:call_type|negate|default:0|bracket_negative }}</td>
+                            {% endfor %}
+                    
+                            {% for distribution_type in distribution_types %}
+                                <td style="text-align:right">{{ data.distributions|get_item:distribution_type|default:0|bracket_negative }}</td>
+                            {% endfor %}
+
+                            <td style="text-align:right">{{ data.net_cash_flow|bracket_negative }}</td>
                         </tr>
                         {% endfor %}
-                    {% else %}
-                        <tr><td colspan="9">There are no cash flows to display</td></tr>
-                    {% endif%}
+                        
+                        <tr style="font-weight: bold;">
+                            <td colspan="8" style="text-align:left">Net Asset Value</td><td style="text-align:right">100,000,000.00</td>
+                        </tr>
+                        <tr style="font-weight: bold;">
+                            <td colspan="8" style="text-align:left">Net IRR</td><td style="text-align:right">25.0%</td>
+                        </tr>
+                        <tr style="font-weight: bold;">
+                            <td colspan="8" style="text-align:left">Net X Money</td><td style="text-align:right">1.50x</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -450,8 +461,6 @@
                 <!-- Fund Close Content -->
                 <div class="tab-pane fade show active" id="fund_closes" role="tabpanel">
                     <br>
-                    <p>The following table depicts the historical fund closes and the total committed capital for the Fund to date:</p>
-
                     <div class="col-md-12">
                         <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" style="width:80%;" href="{% url 'fund_close' pk=fund.id %}">
                             <i class="fas fa-plus"> Create a New Fund Close</i>
@@ -463,7 +472,7 @@
                                 <th style="text-align:right">Total Committed</th>
                                 <th style="text-align:center">Fund Interest</th>
                                 {% for date in unique_dates %}
-                                <th style="text-align:right">{{ date }}</th>
+                                <th style="text-align:right">{{ date | date:"d M Y" }}</th>
                                 {% endfor %}
                             </thead>
                             {% if investors_data %}

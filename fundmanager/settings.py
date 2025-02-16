@@ -27,7 +27,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['d3ca-155-93-171-124.ngrok-free.app','127.0.0.1']
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -109,8 +108,6 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = 'manager.CustomUser'
-
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
@@ -129,6 +126,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Authentication Redirects
+LOGIN_URL = 'login'  # Redirects unauthenticated users to the login page
+LOGIN_REDIRECT_URL = 'dashboard'  # Redirects users after successful login
+LOGOUT_REDIRECT_URL = 'login'  # Redirects users to login page after logout
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/

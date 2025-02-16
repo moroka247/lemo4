@@ -1,3 +1,7 @@
+from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth import login
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.contrib import messages
@@ -24,6 +28,9 @@ from django.shortcuts import render
 from django.db import transaction
 from collections import defaultdict
 from django.forms import formset_factory
+from django.shortcuts import render, redirect
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
 # API Views
 class CurrencyViewSet(ModelViewSet):
@@ -123,7 +130,8 @@ class HomePageView(TemplateView):
     }
 
 #Model List and Detail Views
-class FundsList(ListView):
+
+class FundsList(LoginRequiredMixin, ListView):
     model = Fund
     template_name = 'funds/funds.html'
     context_object_name = 'funds'
@@ -145,12 +153,16 @@ class FundsList(ListView):
             #Calculate the undrawn commitment
             undrawn_commitment = committed_capital - called_capital
 
+            #Retrieve distribution records
+            distributions = Distribution.objects.filter(fund = fund).aggregate(total=Sum('amount'))['total'] or 0
+
             #Append Fund data record
             funds_data.append({
                 'fund': fund,
                 'committed_capital': committed_capital,
                 'called_capital': called_capital,
-                'undrawn_commitment': undrawn_commitment
+                'undrawn_commitment': undrawn_commitment,
+                'distributions': distributions,
             })
 
         #Pass the structured data to the template
@@ -170,7 +182,7 @@ class FundDetail(DetailView):
         total_commitments_by_date = defaultdict(lambda: 0)
         unique_dates = set()
 
-        # 1️⃣ Get committed capital grouped by investor & date
+        # Get committed capital grouped by investor & date
         investor_commitments_by_date = (
             CommittedCapital.objects
             .filter(fund=fund)
@@ -188,7 +200,7 @@ class FundDetail(DetailView):
             total_commitments_by_date[date] += committed_on_date
             unique_dates.add(date)
 
-        # 2️⃣ Get total committed capital per investor
+        # Get total committed capital per investor
         committed_capital = (
             CommittedCapital.objects
             .filter(fund=fund)
@@ -200,7 +212,7 @@ class FundDetail(DetailView):
             investor_id = record["investor"]
             investor_data[investor_id]["total_commitment"] = record["total_commitment"]
 
-        # 3️⃣ Get total committed capital for the entire fund
+        # Get total committed capital for the entire fund
         total_committed_capital = (
             CommittedCapital.objects
             .filter(fund=fund)
@@ -208,7 +220,7 @@ class FundDetail(DetailView):
             .get('total_committed', 0) or 0
         )
 
-        # 4️⃣ Get drawn capital per investor and total drawn capital
+        # Get drawn capital per investor and total drawn capital
         drawn_capital = (
             CapitalCall.objects
             .filter(fund=fund)
@@ -225,15 +237,68 @@ class FundDetail(DetailView):
             .get('total_drawn', 0) or 0
         )
 
-        # 5️⃣ Compute undrawn capital
+        # Compute undrawn capital
         undrawn_committed_capital = total_committed_capital - total_drawn_capital
 
-        # 6️⃣ Initialize variables for fund-wide totals
+
+        # Get distinct types for column headers
+        call_types = list(CallType.objects.values_list('name', flat=True))
+        distribution_types = list(DistributionType.objects.values_list('name', flat=True))
+
+        # Fetch Capital Calls grouped by date, notice_number, and call_type
+        capital_calls_by_type_n_date = (
+            CapitalCall.objects
+            .filter(fund=fund)
+            .values('date', 'notice_number', 'call_type__name')
+            .annotate(total_amount=Sum('amount'))
+            .order_by('date', 'notice_number', 'call_type__name')
+        )
+
+        # Fetch Distributions grouped by date, notice_number, and distribution_type
+        distributions_by_type_n_date = (
+            Distribution.objects
+            .filter(fund=fund)
+            .values('date', 'notice_number', 'distribution_type__name')
+            .annotate(total_amount=Sum('amount'))
+            .order_by('date', 'notice_number', 'distribution_type__name')
+        )
+
+        # Unified structure: { (date, notice_number): { "capital_calls": {...}, "distributions": {...} } }
+        calls_n_distributions_table_data = defaultdict(lambda: {
+            "capital_calls": {ct: 0 for ct in call_types},
+            "distributions": {dt: 0 for dt in distribution_types}
+        })
+
+        # Populate Capital Calls
+        for call in capital_calls_by_type_n_date:
+            key = (call['date'], call['notice_number'])
+            calls_n_distributions_table_data[key]["capital_calls"][call['call_type__name']] = call['total_amount']
+
+        # Populate Distributions
+        for distribution in distributions_by_type_n_date:
+            key = (distribution['date'], distribution['notice_number'])
+            calls_n_distributions_table_data[key]["distributions"][distribution['distribution_type__name']] = distribution['total_amount']
+
+        # Convert dictionary to a sorted list for template rendering
+        calls_n_distributions_table_rows = [
+            (date, notice_number, data) for (date, notice_number), data in sorted(calls_n_distributions_table_data.items())
+        ]
+
+        for (date, notice_number), data in calls_n_distributions_table_data.items():
+            total_calls = sum(data['capital_calls'].values())  # Sum all capital calls and make them negative
+            total_distributions = sum(data['distributions'].values())  # Sum all distributions
+            net_cash_flow = total_distributions - total_calls  # Net Cash Flow
+
+            # Store the net cash flow in the dictionary
+            data['net_cash_flow'] = net_cash_flow
+
+
+        # Initialize variables for fund-wide totals
         total_capital_calls = total_distributions = total_operating_income = 0
         total_operating_expenses = total_unrealised_gains_or_losses = total_net_asset_value = 0
         total_fund_interest_committed = total_fund_interest_called = 0
 
-        # 7️⃣ Process investor-level calculations
+        # Process investor-level calculations
         investors_data = []
 
         for investor_id, data in investor_data.items():
@@ -291,10 +356,14 @@ class FundDetail(DetailView):
                 'commitments_by_date': data["dates"],  # Store commitments grouped by date
             })
 
-        # 8️⃣ Update context with all computed data
+        # Update context with all computed data
         context.update({
             'investors_data': investors_data,
             'unique_dates': unique_dates,
+            'calls_n_distributions_table_data': calls_n_distributions_table_data,
+            'calls_n_distributions_table_rows': calls_n_distributions_table_rows,
+            'call_types': call_types,
+            'distribution_types': distribution_types,
             'total_commitments_by_date': dict(total_commitments_by_date),
             'total_committed_capital': total_committed_capital,
             'total_drawn_capital': total_drawn_capital,
@@ -340,7 +409,7 @@ class FundDetail(DetailView):
         df.to_excel(response, index=False, engine='openpyxl')
         return response
 
-class InvestorsList(ListView):
+class InvestorsList(LoginRequiredMixin, ListView):
     model = Investor
     template_name = 'investors/investors.html'
     context_object_name = 'investors'
@@ -395,7 +464,7 @@ class InvestorDetail(DetailView):
 
         return context
 
-class InvesmentsList(ListView):
+class InvesmentsList(LoginRequiredMixin, ListView):
     model = Investment
     template_name = 'investments/investments.html'
     context_object_name = 'investments'
@@ -410,12 +479,12 @@ class InvestmentDetail(DetailView):
         context['companies'] = Company.objects.all()
         return context
 
-class ContactsList(ListView):
+class ContactsList(LoginRequiredMixin, ListView):
     model = Contact
     template_name = 'contacts/contacts.html'
     context_object_name = 'contacts'
 
-class CompaniesList(ListView):
+class CompaniesList(LoginRequiredMixin, ListView):
     model = Company
     template_name = 'companies/companies.html'
     context_object_name = 'companies'
@@ -874,3 +943,25 @@ class FormSuccessView(TemplateView):
         'content': 'Record has been created.'
     }
 
+# Authentication Views
+
+class CustomRegisterView(FormView):
+    template_name = 'authentication/register.html'
+    form_class = UserCreationForm
+    success_url = reverse_lazy('dashboard')
+
+    def form_valid(self, form):
+        user = form.save()
+        login(self.request, user)
+        return super().form_valid(form)
+
+class CustomLoginView(LoginView):
+    template_name = 'authentication/login.html'
+    authentication_form = AuthenticationForm
+    redirect_authenticated_user = True
+
+    def get_success_url(self):
+        return reverse_lazy('dashboard')
+
+class CustomLogoutView(LogoutView):
+    next_page = reverse_lazy('login')

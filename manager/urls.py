@@ -35,8 +35,13 @@ router.register('instrument', views.InstrumentViewSet, basename='instrument')
 
 urlpatterns = [
     path('api/',include(router.urls)),
-    path('', HomePageView.as_view(), name='home'),
+#    path('', HomePageView.as_view(), name='home'),
     path('__debug__/', include(debug_toolbar.urls)),
+
+    # Authentication
+    path('register/', CustomRegisterView.as_view(), name='register'),
+    path('', CustomLoginView.as_view(), name='login'),
+    path('logout/', CustomLogoutView.as_view(), name='logout'),
     # Funds
     path('funds/', FundsList.as_view(), name='funds'),
     path('funds/<int:pk>', FundDetail.as_view(), name='fund_detail'),
