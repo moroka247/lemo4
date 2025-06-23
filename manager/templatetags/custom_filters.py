@@ -6,9 +6,12 @@ register = template.Library()
 def percent(value, decimals=4):
     """Convert a number to a percentage string with specified decimal places."""
     try:
+        value = float(value)  # Convert Decimal to float
         return f"{value * 100:.{decimals}f}%"
     except (TypeError, ValueError):
         return ''
+
+
 
 @register.filter
 def div(value, arg):

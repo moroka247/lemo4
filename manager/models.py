@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.shortcuts import reverse
+from .choices import FeeFrequency, FeeBasis
 
 class InvestorType(models.Model):
     category = models.CharField(max_length=100)
@@ -90,8 +91,27 @@ class Fund(models.Model):
     def get_absolute_url(self):
         return reverse('fund_detail', kwargs={'pk':self.pk})
 
-class FundParameter():
-    pass
+class FundParameter(models.Model):
+    fund = models.ForeignKey(Fund, on_delete=models.CASCADE)
+    year_end = models.DateField(auto_now=False, null=True)
+    fee_frequency = models.CharField(
+        max_length=1,
+        choices=FeeFrequency.choices,
+        null=True,
+        blank=True,
+    )
+    investment_period_fee_basis = models.CharField(
+        max_length=1,
+        choices=FeeBasis.choices,
+        null=True,
+        blank=True,
+    )
+    divest_period_fee_basis = models.CharField(
+        max_length=1,
+        choices=FeeBasis.choices,
+        null=True,
+        blank=True,
+    )
 
 class FundClose(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
@@ -168,6 +188,12 @@ class CapitalCall(models.Model):
 
     def __str__(self):
         return str(self.fund) + ' | ' + str(self.notice_number) + ' | ' + str(self.call_type)
+
+class ManagementFees(models.Model):
+    fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
+    period_start = models.DateField(null=False)
+    period_end = models.DateField(null=False)
+    update_flag = models.BooleanField(null=False)
 
 class Instrument(models.Model):
     name = models.CharField(max_length=255)
@@ -254,3 +280,10 @@ class UnrealisedLosses(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12,decimal_places=2)
+
+class NetAssetValue(models.Model):
+    date = models.DateField(auto_now=False, null=False)
+    fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
+    investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=12,decimal_places=2)
+

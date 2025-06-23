@@ -18,3 +18,4 @@ tzdata
 urllib3
 pandas
 openpyxl
+scipy

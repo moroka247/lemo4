@@ -239,7 +239,7 @@
                             <td style="text-align:center">{{ investor_data.fund_interest_committed|percent:2 }}</td>
                         </tr>
                         {% endfor %}
-                    <tr>
+                    <tr class="total-row">
                         <td style="text-align:left"><strong>Total</strong></td>
                         <td style="text-align:right"><strong>{{ total_committed_capital }}</strong></td>
                         <td style="text-align:center"><strong>{{ total_fund_interest_committed|percent:2 }}</strong></td>
@@ -287,7 +287,7 @@
                             <td style="text-align:left">{{ investor_data.investor.name }}</td>
                             <td style="text-align:center">{{ investor_data.fund_interest_called|percent:2 }}</td>
                             <td style="text-align:right">{{ investor_data.investor_capital_calls|bracket_negative }}</td>
-                            <td style="text-align:right">{{ investor_data.investor_distributions|bracket_negative }}</td>
+                            <td style="text-align:right">{{ investor_data.investor_distributions|negate|bracket_negative }}</td>
                             <td style="text-align:right">{{ investor_data.investor_operating_income|bracket_negative }}</td>
                             <td style="text-align:right">{{ investor_data.investor_operating_expenses|bracket_negative }}</td>
                             <td style="text-align:right">{{ investor_data.investor_unrealised_gains_or_losses|bracket_negative }}</td>
@@ -298,7 +298,7 @@
                             <td><strong>Total</strong></td>
                             <td style="text-align:center"><strong>{{ total_fund_interest_called|percent:2 }}</strong></td>
                             <td style="text-align:right"><strong>{{ total_drawn_capital|bracket_negative }}</strong></td>
-                            <td style="text-align:right"><strong>{{ total_distributions|bracket_negative }}</strong></td>
+                            <td style="text-align:right"><strong>{{ total_distributions|negate|bracket_negative }}</strong></td>
                             <td style="text-align:right"><strong>{{ total_operating_income|bracket_negative }}</strong></td>
                             <td style="text-align:right"><strong>{{ total_operating_expenses|bracket_negative }}</strong></td>
                             <td style="text-align:right"><strong>{{ total_unrealised_gains_or_losses|bracket_negative }}</strong></td>
@@ -344,24 +344,24 @@
                         </tr>
                     </thead>
                     <tbody>
-                    {% if investments %}
+                    {% for company, investments in investments_by_company.items %}
                         {% for investment in investments %}
-                        <tr>
-                            <td style="text-align:left">{{investment.company}}</td>
-                            <td style="text-align:center">{{investment.instrument}}</td>
-                            <td style="text-align:center"></td>
-                            <td style="text-align:right">{{investment.committed_amount|bracket_negative}}</td>
-                            <td astyle="text-align:right">{{investment.invested_amount|bracket_negative}}</td>
-                            <td style="text-align:right"></td>
-                            <td style="text-align:right"></td>
-                            <td style="text-align:center"></td>
-                            <td style="text-align:center">25%</td>
-                            <td style="text-align:center">2.0x</td>
-                        </tr>
+                            <tr>
+                                {% if forloop.first %}
+                                    <td rowspan="{{ investments|length }}">{{ company }}</td>
+                                {% endif %}
+                                <td style="text-align:center">{{ investment.instrument }}</td>
+                                <td style="text-align:center"></td>
+                                <td style="text-align:right">{{ investment.committed_amount }}</td>
+                                <td style="text-align:right">{{ investment.invested_amount }}</td>
+                                <td style="text-align:right"></td>
+                                <td style="text-align:right">{{ investment.valuation }}</td>
+                                <td style="text-align:right">{{ investment.realised_proceeds }}</td>
+                                <td style="text-align:center">{{ investment.IRR }}</td>
+                                <td style="text-align:center">{{ investment.MOIC }}</td>
+                            </tr>
                         {% endfor %}
-                    {% else %}
-                        <tr><td>This Fund has no investments</td></tr>
-                    {% endif%}
+                    {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -369,7 +369,17 @@
     </div>
 
     <div role="tabpanel" class="tab-pane fade" id="performance">
-
+        <div class="col-md-6 my-4">
+            <form method="GET" id="date-filter-form" class="d-flex align-items-center gap-2">
+                <label for="start_date" class="form-label">Start Date:</label>
+                <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date|default_if_none:'' }}">
+            
+                <label for="end_date" class="form-label">End Date:</label>
+                <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date|default_if_none:'' }}">
+        
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </form>
+        </div>
         <div class="row">
             <div class="col-md-12 mt-10">
                 <table class="table table-bordered">
@@ -423,15 +433,22 @@
                             <td style="text-align:right">{{ data.net_cash_flow|bracket_negative }}</td>
                         </tr>
                         {% endfor %}
-                        
-                        <tr style="font-weight: bold;">
-                            <td colspan="8" style="text-align:left">Net Asset Value</td><td style="text-align:right">100,000,000.00</td>
+
+                        <tr class="total-row">
+                            <td></td>
+                            <td colspan="7" style="text-align:left">Net IRR</td>
+                            <td style="text-align:right">
+                                {% if net_xirr is not None %}
+                                    {{ net_xirr|percent:2 }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
                         </tr>
-                        <tr style="font-weight: bold;">
-                            <td colspan="8" style="text-align:left">Net IRR</td><td style="text-align:right">25.0%</td>
-                        </tr>
-                        <tr style="font-weight: bold;">
-                            <td colspan="8" style="text-align:left">Net X Money</td><td style="text-align:right">1.50x</td>
+                        <tr class="total-row">
+                            <td></td>
+                            <td colspan="7" style="text-align:left">Net X Money</td>
+                            <td style="text-align:right">{{ net_times_money|bracket_negative }}x</td>
                         </tr>
                     </tbody>
                 </table>
@@ -488,7 +505,7 @@
                                     {% endfor %}
                                 </tr>
                                 {% endfor %}
-                            <tr>
+                            <tr class="total-row">
                                 <td style="text-align: left;"><strong>Total</strong></td>
                                 <td style="text-align: right;"><strong>{{ total_committed_capital }}</strong></td>
                                 <td style="text-align: center;"><strong>{{ total_fund_interest_committed|percent:2 }}</strong></td>
@@ -662,6 +679,19 @@
         if (!isNaN(value) && value !== '') {
             e.target.value = Number(value).toLocaleString(); // Format with commas
         }
+    });
+
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const startDateInput = document.getElementById("start_date");
+        const endDateInput = document.getElementById("end_date");
+
+        function reloadData() {
+            document.getElementById("date-filter-form").submit();
+        }
+
+        startDateInput.addEventListener("change", reloadData);
+        endDateInput.addEventListener("change", reloadData);
     });
     
     </script>

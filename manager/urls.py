@@ -28,6 +28,7 @@ router.register('countries', views.CountryViewSet, basename='countries')
 router.register('currencies', views.CurrencyViewSet, basename='currencies')
 router.register('industry', views.IndustryViewSet, basename='industry')
 router.register('instrument', views.InstrumentViewSet, basename='instrument')
+router.register('net-asset-value', views.NetAssetValueViewSet, basename='net-asset-value')
 
 
 #investors_router = routers.NestedDefaultRouter(router, 'investors', lookup='investors_pk')

@@ -20,7 +20,7 @@ from .serializers import *
 from .forms import *
 import requests
 import json
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import pandas as pd
 from django.db.models import Q
 from django.core.paginator import Paginator
@@ -31,6 +31,8 @@ from django.forms import formset_factory
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.utils.dateparse import parse_date
+from .utils import xirr 
 
 # API Views
 class CurrencyViewSet(ModelViewSet):
@@ -122,6 +124,10 @@ class DisbursementViewSet(ModelViewSet):
     queryset = Disbursement.objects.all()
     serializer_class = DisbursementSerializer
 
+class NetAssetValueViewSet(ModelViewSet):
+    queryset = NetAssetValue.objects.all()
+    serializer_class = NetAssetValueSerializer
+
 #HTML Template Views
 class HomePageView(TemplateView):
     template_name = 'index.html'
@@ -177,6 +183,19 @@ class FundDetail(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         fund = self.object
+
+        # Get date range from request
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+
+        # Parse date strings to actual date objects
+        start_date = parse_date(start_date) if start_date else None
+        end_date = parse_date(end_date) if end_date else None
+
+        # Apply date filtering only if both dates are provided
+        date_filter = {}
+        if start_date and end_date:
+            date_filter['date__range'] = (start_date, end_date)
 
         investor_data = defaultdict(lambda: {"total_commitment": 0, "dates": {}})
         total_commitments_by_date = defaultdict(lambda: 0)
@@ -240,6 +259,26 @@ class FundDetail(DetailView):
         # Compute undrawn capital
         undrawn_committed_capital = total_committed_capital - total_drawn_capital
 
+        # PORTFOLIO INVESTMENTS
+
+
+        # Fetch investments grouped by company
+        investments_by_company = defaultdict(list)
+
+        investments = Investment.objects.filter(fund=fund).select_related('company', 'instrument')
+
+        for inv in investments:
+            investments_by_company[inv.company.name].append({
+                "instrument": inv.instrument.name,
+                "committed_amount": inv.committed_amount,
+                "invested_amount": inv.invested_amount,
+                "realised_proceeds": inv.realised_proceeds,
+                "valuation": inv.valuation,
+                "IRR": "-",  # Placeholder
+                "MOIC": "-",  # Placeholder
+            })
+
+        # PERFORMACE / CASH FLOWS
 
         # Get distinct types for column headers
         call_types = list(CallType.objects.values_list('name', flat=True))
@@ -248,7 +287,7 @@ class FundDetail(DetailView):
         # Fetch Capital Calls grouped by date, notice_number, and call_type
         capital_calls_by_type_n_date = (
             CapitalCall.objects
-            .filter(fund=fund)
+            .filter(fund=fund, **date_filter)
             .values('date', 'notice_number', 'call_type__name')
             .annotate(total_amount=Sum('amount'))
             .order_by('date', 'notice_number', 'call_type__name')
@@ -257,7 +296,7 @@ class FundDetail(DetailView):
         # Fetch Distributions grouped by date, notice_number, and distribution_type
         distributions_by_type_n_date = (
             Distribution.objects
-            .filter(fund=fund)
+            .filter(fund=fund, **date_filter)
             .values('date', 'notice_number', 'distribution_type__name')
             .annotate(total_amount=Sum('amount'))
             .order_by('date', 'notice_number', 'distribution_type__name')
@@ -284,20 +323,60 @@ class FundDetail(DetailView):
             (date, notice_number, data) for (date, notice_number), data in sorted(calls_n_distributions_table_data.items())
         ]
 
+         # Calculate net cash flows
         for (date, notice_number), data in calls_n_distributions_table_data.items():
             total_calls = sum(data['capital_calls'].values())  # Sum all capital calls and make them negative
             total_distributions = sum(data['distributions'].values())  # Sum all distributions
             net_cash_flow = total_distributions - total_calls  # Net Cash Flow
+            data['net_cash_flow'] = net_cash_flow  # Store the net cash flow in the dictionary
 
-            # Store the net cash flow in the dictionary
-            data['net_cash_flow'] = net_cash_flow
 
+        # Fetch the highest NAV within the date range
+        highest_nav_entry = (
+            NetAssetValue.objects
+            .filter(fund=fund, **date_filter)
+            .aggregate(highest_nav=Max('amount'))
+        )
+        highest_nav = highest_nav_entry['highest_nav'] if highest_nav_entry['highest_nav'] else None
+
+        # Determine the latest available date for NAV
+        latest_cashflow_date = max([date for date, _ in calls_n_distributions_table_data.keys()], default=None)
+
+        # Fetch the last notice number in the dataset
+        last_notice_number = max(
+            [notice_number for _, notice_number in calls_n_distributions_table_data.keys()], 
+            default=0
+        ) + 1  # Increment to keep it unique
+
+        # Add highest NAV as a final cash flow
+        if highest_nav and latest_cashflow_date:
+            calls_n_distributions_table_data[(latest_cashflow_date, last_notice_number)] = {
+                "capital_calls": {ct: 0 for ct in call_types},
+                "distributions": {dt: 0 for dt in distribution_types},
+                "net_cash_flow": highest_nav
+            }
+
+        # Convert updated dictionary to a sorted list
+        calls_n_distributions_table_rows = [
+            (date, notice_number, data) for (date, notice_number), data in sorted(calls_n_distributions_table_data.items())
+        ]
+
+        # Fetch the cashflows, which should be a list of tuples (date, cashflow_value)
+        cashflows = sorted(
+            [(date, data['net_cash_flow']) for (date, _), data in calls_n_distributions_table_data.items()]
+        )
+
+        # Compute XIRR
+        if any(cf[1] > 0 for cf in cashflows) and any(cf[1] < 0 for cf in cashflows):
+            net_xirr = xirr(cashflows)  # Use the imported xirr function
+        else:
+            net_xirr = None
 
         # Initialize variables for fund-wide totals
         total_capital_calls = total_distributions = total_operating_income = 0
         total_operating_expenses = total_unrealised_gains_or_losses = total_net_asset_value = 0
-        total_fund_interest_committed = total_fund_interest_called = 0
-
+        total_fund_interest_committed = total_fund_interest_called =  net_times_money = 0
+       
         # Process investor-level calculations
         investors_data = []
 
@@ -356,14 +435,20 @@ class FundDetail(DetailView):
                 'commitments_by_date': data["dates"],  # Store commitments grouped by date
             })
 
+            net_times_money = total_distributions / total_drawn_capital if total_drawn_capital != 0 else 0
+
         # Update context with all computed data
         context.update({
             'investors_data': investors_data,
+            'investments_by_company': dict(investments_by_company),
             'unique_dates': unique_dates,
             'calls_n_distributions_table_data': calls_n_distributions_table_data,
             'calls_n_distributions_table_rows': calls_n_distributions_table_rows,
+            'latest_cashflow_date': latest_cashflow_date,
+            'highest_nav': highest_nav,
             'call_types': call_types,
             'distribution_types': distribution_types,
+            'net_xirr': net_xirr,
             'total_commitments_by_date': dict(total_commitments_by_date),
             'total_committed_capital': total_committed_capital,
             'total_drawn_capital': total_drawn_capital,
@@ -376,6 +461,7 @@ class FundDetail(DetailView):
             'total_net_asset_value': total_net_asset_value,
             'total_fund_interest_committed': total_fund_interest_committed,
             'total_fund_interest_called': total_fund_interest_called,
+            'net_times_money': net_times_money,
         })
 
         return context

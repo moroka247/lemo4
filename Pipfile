@@ -18,6 +18,7 @@ django-cors-headers = "*"
 pandas = "*"
 openpyxl = "*"
 django-widget-tweaks = "*"
+scipy = "*"
 
 [dev-packages]
 

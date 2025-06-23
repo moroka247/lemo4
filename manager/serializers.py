@@ -106,3 +106,8 @@ class CommittedCapitalSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommittedCapital
         fields = '__all__'
+
+class NetAssetValueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NetAssetValue
+        fields = '__all__'
