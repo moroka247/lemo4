@@ -75,3 +75,7 @@ def first_investor(queryset, investor_id):
         if item.investor.id == int(investor_id):
             return item.investor
     return None
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)

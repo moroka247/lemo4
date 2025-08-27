@@ -178,6 +178,33 @@ class NoticeNumber(models.Model):
     fund = models.ForeignKey(Fund, on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor, on_delete=models.SET_NULL, null=True, blank=True)
     number = models.SmallIntegerField(default=500)
+    notice_code = models.CharField(max_length=50, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.notice_code:
+            # Generate notice code: FUNDCODE-YYYY-MM-SEQ
+            fund_code = self.fund.short_name or self.fund.name[:3].upper()
+            year_month = self.date.strftime('%Y-%m')
+            
+            # Get the next sequence number for this fund and month
+            last_notice = NoticeNumber.objects.filter(
+                fund=self.fund,
+                date__year=self.date.year,
+                date__month=self.date.month
+            ).order_by('notice_code').last()
+            
+            if last_notice and last_notice.notice_code:
+                try:
+                    last_seq = int(last_notice.notice_code.split('-')[-1])
+                    next_seq = last_seq + 1
+                except (ValueError, IndexError):
+                    next_seq = 1
+            else:
+                next_seq = 1
+                
+            self.notice_code = f"{fund_code}-{year_month}-{next_seq:03d}"
+        
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return str(self.number) + ' | ' + str(self.fund) + ' | ' + str(self.investor)
@@ -205,7 +232,7 @@ class Distribution(models.Model):
         return str(self.fund) + ' | ' + str(self.notice_number) + ' | ' + str(self.distribution_type)
 
 class CapitalCall(models.Model):
-    notice_number = models.IntegerField(null=True)
+    notice_number = models.ForeignKey(NoticeNumber, on_delete=models.CASCADE, null=True, blank=True)
     date = models.DateField(auto_now=False, null=True)
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)

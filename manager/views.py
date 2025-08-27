@@ -908,25 +908,11 @@ class CapitalCallView(TemplateView):
             total_committed=Sum('amount')
         )
         
-        # Calculate total committed
-        for item in investor_commitments:
-            total_committed += item['total_committed']
-        
-        # Get capital drawn data
-        capital_calls = CapitalCall.objects.filter(fund=fund)
-        investor_drawn = capital_calls.values('investor').annotate(
-            total_drawn=Sum('amount')
-        )
-        
-        # Create investor dictionary for drawn amounts
-        drawn_dict = {item['investor']: item['total_drawn'] for item in investor_drawn}
-        
-        # Prepare investor data
+        # Calculate total committed and prepare investor data
         for item in investor_commitments:
             investor = Investor.objects.get(id=item['investor'])
-            committed_amount = item['total_committed']
-            drawn_amount = drawn_dict.get(item['investor'], Decimal('0'))
-            undrawn_amount = committed_amount - drawn_amount
+            committed_amount = item['total_committed'] or Decimal('0')
+            total_committed += committed_amount
             
             # Calculate fund interest
             fund_interest = Decimal('0')
@@ -936,114 +922,148 @@ class CapitalCallView(TemplateView):
             investor_data.append({
                 'investor': investor,
                 'committed_amount': committed_amount,
-                'drawn_amount': drawn_amount,
-                'undrawn_amount': undrawn_amount,
                 'fund_interest': fund_interest,
             })
-            total_drawn += drawn_amount
         
-        # Get all capital call items for display
-        capital_call_items = CapitalCall.objects.filter(fund=fund).values(
-            'date', 'call_type__name', 'allocation_rule__name', 'description'
-        ).annotate(
-            total_amount=Sum('amount')
-        ).order_by('-date')
+        # Get capital drawn data for each investor
+        capital_calls = CapitalCall.objects.filter(fund=fund)
+        for investor_info in investor_data:
+            investor_drawn = capital_calls.filter(
+                investor=investor_info['investor']
+            ).aggregate(total_drawn=Sum('amount'))['total_drawn'] or Decimal('0')
+            
+            investor_info['drawn_amount'] = investor_drawn
+            investor_info['undrawn_amount'] = investor_info['committed_amount'] - investor_drawn
+            total_drawn += investor_drawn
         
-        # Get detailed breakdown for each capital call item
-        item_breakdown = []
-        for item in capital_call_items:
-            breakdown = CapitalCall.objects.filter(
-                fund=fund,
-                date=item['date'],
-                description=item['description']
-            ).select_related('investor').values('investor__name').annotate(
-                amount=Sum('amount')
-            )
-            item_breakdown.append({
-                'item': item,
-                'breakdown': breakdown
-            })
+        # Get all capital call items grouped by notice number AND description
+        notice_calls = {}
+        for call in CapitalCall.objects.filter(fund=fund).select_related('notice_number', 'call_type', 'allocation_rule', 'investor'):
+            notice_code = call.notice_number.notice_code if call.notice_number else 'No Notice'
+            
+            if notice_code not in notice_calls:
+                notice_calls[notice_code] = {
+                    'notice_number': call.notice_number,
+                    'descriptions': {},  # Changed from 'calls' to 'descriptions'
+                    'total_amount': Decimal('0')
+                }
+            
+            # Group by description within each notice
+            description_key = f"{call.description}-{call.call_type.name}-{call.allocation_rule.name}"
+            
+            if description_key not in notice_calls[notice_code]['descriptions']:
+                notice_calls[notice_code]['descriptions'][description_key] = {
+                    'description': call.description,
+                    'call_type': call.call_type,
+                    'allocation_rule': call.allocation_rule,
+                    'investor_amounts': {},  # Store amounts by investor
+                    'total': Decimal('0')
+                }
+            
+            # Store amount by investor
+            notice_calls[notice_code]['descriptions'][description_key]['investor_amounts'][call.investor.id] = call.amount
+            notice_calls[notice_code]['descriptions'][description_key]['total'] += call.amount
+            notice_calls[notice_code]['total_amount'] += call.amount
         
-        # Forms
-        capital_call_form = CapitalCallForm()
+        # Forms and other context
+        context['date_form'] = CapitalCallDateForm()
+        context['item_formset'] = CapitalCallItemFormSet(prefix='capital_call_items')
+        context['call_types'] = CallType.objects.all()
+        context['allocation_rules'] = AllocationRule.objects.all()
         
         context.update({
             'fund': fund,
             'investor_data': investor_data,
-            'capital_call_items': capital_call_items,
-            'item_breakdown': item_breakdown,
-            'capital_call_form': capital_call_form,
+            'notice_calls': notice_calls,
             'total_committed': total_committed,
             'total_drawn': total_drawn,
             'total_undrawn': total_committed - total_drawn,
-            'call_types': CallType.objects.all(),
-            'allocation_rules': AllocationRule.objects.all(),
         })
+        
         return context
 
+    
     def post(self, request, *args, **kwargs):
         fund = get_object_or_404(Fund, pk=self.kwargs['pk'])
-        form = CapitalCallForm(request.POST)
         
-        if form.is_valid():
-            capital_call = form.save(commit=False)
-            capital_call.fund = fund
+        # Handle forms
+        date_form = CapitalCallDateForm(request.POST)
+        item_formset = CapitalCallItemFormSet(
+            request.POST, 
+            prefix='capital_call_items'
+        )
+        
+        if date_form.is_valid() and item_formset.is_valid():
+            date = date_form.cleaned_data['date']
             
-            # Get allocation parameters
-            allocation_rule = form.cleaned_data['allocation_rule']
-            amount = form.cleaned_data['amount']
-            date = form.cleaned_data['date']  # This is the future call funding date
-            
-            # Additional validation to ensure date is in future
-            if date <= timezone.now().date():
-                form.add_error('date', 'Call funding date must be in the future.')
-                return self.render_to_response(self.get_context_data(form=form))
-            
-            # Get investor commitments
-            investor_commitments = CommittedCapital.objects.filter(fund=fund)
-            total_committed = investor_commitments.aggregate(Sum('amount'))['amount__sum'] or Decimal('0')
-            
-            # Get drawn amounts before this future date
-            drawn_before = CapitalCall.objects.filter(
-                fund=fund, 
-                date__lt=date  # Use the future call date for cutoff
-            ).values('investor').annotate(
-                total_drawn=Sum('amount')
+            # Create a notice for this batch
+            notice = NoticeNumber.objects.create(
+                date=date,
+                fund=fund,
+                investor=None  # Batch notice
             )
-            drawn_dict = {item['investor']: item['total_drawn'] for item in drawn_before}
-            total_drawn_before = sum(drawn_dict.values(), Decimal('0'))
             
-            # Create capital calls for each investor
-            for commitment in investor_commitments:
-                investor = commitment.investor
-                committed_amount = commitment.amount
-                drawn_amount = drawn_dict.get(investor.id, Decimal('0'))
-                
-                if allocation_rule.name == 'Committed Capital':
-                    investor_share = (committed_amount / total_committed) * amount
-                elif allocation_rule.name == 'Undrawn Commitment':
-                    undrawn_amount = committed_amount - drawn_amount
-                    total_undrawn = total_committed - total_drawn_before
-                    investor_share = (undrawn_amount / total_undrawn) * amount if total_undrawn > 0 else Decimal('0')
-                else:
-                    investor_share = Decimal('0')
-                
-                if investor_share > 0:
-                    CapitalCall.objects.create(
-                        fund=fund,
-                        investor=investor,
-                        date=date,  # Use the future date
-                        call_type=capital_call.call_type,
-                        allocation_rule=capital_call.allocation_rule,
-                        description=capital_call.description,
-                        amount=investor_share
+            # Process each item in the formset
+            for form in item_formset:
+                if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                    call_type = form.cleaned_data['call_type']
+                    allocation_rule = form.cleaned_data['allocation_rule']
+                    description = form.cleaned_data['description']
+                    total_amount = form.cleaned_data['amount']
+                    
+                    # Get investor commitments and totals
+                    investor_commitments = CommittedCapital.objects.filter(fund=fund)
+                    total_committed = investor_commitments.aggregate(
+                        Sum('amount')
+                    )['amount__sum'] or Decimal('0')
+                    
+                    # Get drawn amounts before this date
+                    drawn_before = CapitalCall.objects.filter(
+                        fund=fund, 
+                        date__lt=date
+                    ).values('investor').annotate(
+                        total_drawn=Sum('amount')
                     )
+                    drawn_dict = {item['investor']: item['total_drawn'] for item in drawn_before}
+                    total_drawn_before = sum(drawn_dict.values(), Decimal('0'))
+                    
+                    # Create capital calls for each investor
+                    for commitment in investor_commitments:
+                        investor = commitment.investor
+                        committed_amount = commitment.amount
+                        drawn_amount = drawn_dict.get(investor.id, Decimal('0'))
+                        
+                        # Allocation logic
+                        if allocation_rule.name == 'Committed Capital':
+                            investor_share = (committed_amount / total_committed) * total_amount
+                        elif allocation_rule.name == 'Undrawn Commitment':
+                            undrawn_amount = committed_amount - drawn_amount
+                            total_undrawn = total_committed - total_drawn_before
+                            investor_share = (undrawn_amount / total_undrawn) * total_amount if total_undrawn > 0 else Decimal('0')
+                        else:
+                            investor_share = Decimal('0')
+                        
+                        if investor_share > 0:
+                            CapitalCall.objects.create(
+                                notice_number=notice,
+                                fund=fund,
+                                investor=investor,
+                                date=date,
+                                call_type=call_type,
+                                allocation_rule=allocation_rule,
+                                description=description,
+                                amount=investor_share
+                            )
             
-            messages.success(request, f'Capital call scheduled for {date.strftime("%B %d, %Y")}')
+            messages.success(request, f'Capital call batch {notice.notice_code} created successfully!')
             return redirect('capital_call', pk=fund.pk)
         
+        # If forms are invalid
         messages.error(request, 'Please correct the errors below.')
-        return self.render_to_response(self.get_context_data(form=form))
+        context = self.get_context_data()
+        context['date_form'] = date_form
+        context['item_formset'] = item_formset
+        return self.render_to_response(context)
 
 class FormSuccessView(TemplateView):
     template_name = 'form_success.html'

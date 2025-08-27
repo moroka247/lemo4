@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
+{% load custom_filters %}
 
 {% block title %}Capital Call - {{ fund.name }}{% endblock %}
 
@@ -9,7 +10,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>{{ fund.name }} - Capital Call</h2>
         <a href="{% url 'fund_detail' pk=fund.pk %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Back to Fund Overview
+            <i class="fas fa-arrow-left"></i> Back to Fund Details
         </a>
     </div>
 
@@ -23,7 +24,7 @@
                 <table class="table table-bordered table-sm">
                     <thead>
                         <tr>
-                            <th>{{ fund.currency }}</th>
+                            <th></th>
                             <th class="text-center">Total</th>
                             {% for investor in investor_data %}
                             <th class="text-center">{{ investor.investor.name }}</th>
@@ -31,16 +32,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Committed Capital -->
                         <tr>
                             <td><strong>Committed Capital</strong></td>
-                            <td class="text-end"><strong>{{ total_committed|floatformat:2 }}</strong></td>
+                            <td class="text-end">{{ total_committed|floatformat:2 }}</td>
                             {% for investor in investor_data %}
-                            <td class="text-end"><strong>{{ investor.committed_amount|floatformat:2 }}</strong></td>
+                            <td class="text-end">{{ investor.committed_amount|floatformat:2 }}</td>
                             {% endfor %}
                         </tr>
-                        
-                        <!-- Fund Interest -->
                         <tr>
                             <td><strong>Fund Interest</strong></td>
                             <td class="text-end">100.00%</td>
@@ -48,8 +46,6 @@
                             <td class="text-end">{{ investor.fund_interest|floatformat:2 }}%</td>
                             {% endfor %}
                         </tr>
-                        
-                        <!-- Capital Drawn to Date -->
                         <tr>
                             <td><strong>Capital Drawn to Date</strong></td>
                             <td class="text-end">{{ total_drawn|floatformat:2 }}</td>
@@ -57,13 +53,11 @@
                             <td class="text-end">{{ investor.drawn_amount|floatformat:2 }}</td>
                             {% endfor %}
                         </tr>
-                        
-                        <!-- Undrawn Commitment -->
                         <tr class="table-info">
                             <td><strong>Undrawn Commitment</strong></td>
-                            <td class="text-end"><strong>{{ total_undrawn|floatformat:2 }}</strong></td>
+                            <td class="text-end">{{ total_undrawn|floatformat:2 }}</td>
                             {% for investor in investor_data %}
-                            <td class="text-end"><strong>{{ investor.undrawn_amount|floatformat:2 }}</strong></td>
+                            <td class="text-end">{{ investor.undrawn_amount|floatformat:2 }}</td>
                             {% endfor %}
                         </tr>
                     </tbody>
@@ -75,100 +69,169 @@
     <!-- Add Capital Call Form -->
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Schedule Capital Call</h5>
+            <h5 class="card-title mb-0">Create Capital Call Batch</h5>
             <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#capitalCallForm">
-                <i class="fas fa-plus"></i> Schedule New Call
+                <i class="fas fa-plus"></i> Create New Batch
             </button>
         </div>
         <div class="card-body collapse" id="capitalCallForm">
             <form method="post">
                 {% csrf_token %}
-                <div class="row">
-                    <div class="col-md-3">
-                        {{ capital_call_form.date|as_crispy_field }}
-                        <small class="form-text text-muted">Future date when funds will be called</small>
+                
+                <!-- Date Selection -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        {{ date_form.date|as_crispy_field }}
                     </div>
-                    <div class="col-md-3">
-                        {{ capital_call_form.call_type|as_crispy_field }}
-                    </div>
-                    <div class="col-md-3">
-                        {{ capital_call_form.allocation_rule|as_crispy_field }}
-                    </div>
-                    <div class="col-md-3">
-                        {{ capital_call_form.amount|as_crispy_field }}
-                        <small class="form-text text-muted">Total amount to be called from investors</small>
-                    </div>
-                    <div class="col-md-12">
-                        {{ capital_call_form.description|as_crispy_field }}
-                    </div>
-                    <div class="col-md-12 mt-3">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-calendar-plus"></i> Schedule Capital Call
-                        </button>
-                    </div>
+                </div>
+                
+                <!-- Multiple Items Formset -->
+                <h6>Capital Call Items</h6>
+                {{ item_formset.management_form }}
+                
+                <table class="table table-sm" id="capital-call-table">
+                    <thead>
+                        <tr>
+                            <th>Call Type</th>
+                            <th>Allocation Rule</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for form in item_formset %}
+                        <tr class="capital-call-item">
+                            <td>{{ form.call_type }}</td>
+                            <td>{{ form.allocation_rule }}</td>
+                            <td>{{ form.description }}</td>
+                            <td>{{ form.amount }}</td>
+                            <td>
+                                {% if item_formset.can_delete %}
+                                {{ form.DELETE }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-item">
+                    <i class="fas fa-plus"></i> Add Another Item
+                </button>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> Process Capital Call Batch
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Capital Call Items Table -->
+    <!-- Capital Call Items by Notice -->
     <div class="card">
         <div class="card-header">
-            <h5 class="card-title mb-0">Capital Call Items</h5>
+            <h5 class="card-title mb-0">Capital Call Batches</h5>
         </div>
         <div class="card-body">
-            {% if capital_call_items %}
-            <div class="table-responsive">
-                <table class="table table-bordered table-sm">
-                    <thead>
-                        <tr>
-                            <th>{{ fund.currency }}</th>
-                            <th class="text-center">Total</th>
-                            {% for investor in investor_data %}
-                            <th class="text-center">{{ investor.investor.name }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in capital_call_items %}
-                        <tr>
-                            <td>
-                                <strong>{{ item.description }}</strong><br>
-                                <small>{{ item.date|date:"M d, Y" }} | {{ item.call_type__name }} | {{ item.allocation_rule__name }}</small>
-                            </td>
-                            <td class="text-end">{{ item.total_amount|floatformat:2 }}</td>
-                            {% for investor in investor_data %}
-                            <td class="text-end">
-                                {% for breakdown in item_breakdown %}
-                                    {% if breakdown.item.description == item.description and breakdown.item.date == item.date %}
-                                        {% for b in breakdown.breakdown %}
-                                            {% if b.investor__name == investor.investor.name %}
-                                                {{ b.amount|floatformat:2 }}
-                                            {% endif %}
-                                        {% endfor %}
-                                    {% endif %}
+            {% if notice_calls %}
+                {% for notice_code, notice_data in notice_calls.items %}
+                <div class="mb-4">
+                    <h6>Notice: {{ notice_code }} ({{ notice_data.notice_number.date|date:"M d, Y" }}) - Total: {{ notice_data.total_amount|floatformat:2 }}</h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Call Type</th>
+                                    <th>Allocation Basis</th>
+                                    <th class="text-center">Total</th>
+                                    {% for investor in investor_data %}
+                                    <th class="text-center">{{ investor.investor.name }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for desc_key, desc_data in notice_data.descriptions.items %}
+                                <tr>
+                                    <td>{{ desc_data.description }}</td>
+                                    <td>{{ desc_data.call_type.name }}</td>
+                                    <td>{{ desc_data.allocation_rule.name }}</td>
+                                    <td class="text-end">{{ desc_data.total|floatformat:2 }}</td>
+                                    {% for investor in investor_data %}
+                                    <td class="text-end">
+                                        {{ desc_data.investor_amounts|get_item:investor.investor.id|default:"-"|floatformat:2 }}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
                                 {% endfor %}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                        
-                        <!-- Total Row -->
-                        <tr class="table-success">
-                            <td colspan="1"><strong>Total Capital Calls</strong></td>
-                            <td class="text-end"><strong>{{ total_drawn|floatformat:2 }}</strong></td>
-                            {% for investor in investor_data %}
-                            <td class="text-end"><strong>{{ investor.drawn_amount|floatformat:2 }}</strong></td>
-                            {% endfor %}
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
             {% else %}
-            <p class="text-muted">No capital call items yet.</p>
+            <p class="text-muted">No capital call batches yet.</p>
             {% endif %}
         </div>
     </div>
+
 </div>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addButton = document.getElementById('add-item');
+    const tableBody = document.querySelector('#capital-call-table tbody');
+    const totalForms = document.getElementById('id_capital_call_items-TOTAL_FORMS');
+    let formCount = parseInt(totalForms.value);
+    
+    addButton.addEventListener('click', function() {
+        const newRow = document.createElement('tr');
+        newRow.className = 'capital-call-item';
+        newRow.innerHTML = `
+            <td>
+                <select name="capital_call_items-${formCount}-call_type" class="form-control" required>
+                    <option value="">---------</option>
+                    {% for call_type in call_types %}
+                    <option value="{{ call_type.id }}">{{ call_type.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <select name="capital_call_items-${formCount}-allocation_rule" class="form-control" required>
+                    <option value="">---------</option>
+                    {% for rule in allocation_rules %}
+                    <option value="{{ rule.id }}">{{ rule.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <input type="text" name="capital_call_items-${formCount}-description" 
+                       class="form-control" placeholder="Description" required>
+            </td>
+            <td>
+                <input type="number" name="capital_call_items-${formCount}-amount" 
+                       class="form-control" step="0.01" placeholder="Amount" required>
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-danger remove-item">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(newRow);
+        formCount++;
+        totalForms.value = formCount;
+    });
+    
+    tableBody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-item')) {
+            e.target.closest('tr').remove();
+        }
+    });
+});
+</script>
+{% endblock %}

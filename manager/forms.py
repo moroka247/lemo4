@@ -1,7 +1,7 @@
 from django.utils import timezone
 from django import forms
-from django.forms import inlineformset_factory, modelformset_factory, BaseFormSet
-from . models import Investor, Fund, Investment, Company, CommittedCapital, Contact, CapitalCall, InvestorContact, CallType
+from django.forms import formset_factory, inlineformset_factory, modelformset_factory, BaseFormSet
+from . models import Investor, Fund, Investment, Company, CommittedCapital, Contact, CapitalCall, InvestorContact, CallType, AllocationRule
 
 class InvestorForm(forms.ModelForm):
     class Meta:
@@ -51,32 +51,56 @@ CommittedCapitalFormSet = inlineformset_factory(
     fields=['investor', 'amount', 'date']
 )
 
-class CapitalCallForm(forms.ModelForm):
-    class Meta:
-        model = CapitalCall
-        fields = ['date', 'call_type', 'allocation_rule', 'description', 'amount']
-        widgets = {
-            'date': forms.DateInput(attrs={
-                'type': 'date', 
-                'class': 'form-control'
-            }),
-            'call_type': forms.Select(attrs={'class': 'form-control'}),
-            'allocation_rule': forms.Select(attrs={'class': 'form-control'}),
-            'description': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'E.g., Q2 2024 Capital Call for Acquisitions'
-            }),
-            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-        }
-        labels = {
-            'date': 'Call Funding Date',
-            'description': 'Call Description',
-        }
+class CapitalCallDateForm(forms.Form):
+    date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'type': 'date', 
+            'class': 'form-control'
+        }),
+        label='Call Funding Date'
+    )
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Set initial date to today, but user can select any date
         self.fields['date'].initial = timezone.now().date()
+
+class CapitalCallItemForm(forms.Form):
+    call_type = forms.ModelChoiceField(
+        queryset=CallType.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Call Type'
+    )
+    allocation_rule = forms.ModelChoiceField(
+        queryset=AllocationRule.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Allocation Rule'
+    )
+    description = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Description of capital call item'
+        }),
+        label='Description'
+    )
+    amount = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'placeholder': 'Amount'
+        }),
+        label='Amount'
+    )
+
+# Create formset
+CapitalCallItemFormSet = formset_factory(
+    CapitalCallItemForm,
+    extra=3,
+    can_delete=True,
+    can_order=False
+)
 
 class ContactForm(forms.ModelForm):
     class Meta:
