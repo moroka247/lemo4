@@ -2,7 +2,8 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.http import JsonResponse
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
@@ -22,15 +23,16 @@ import requests
 import json
 from decimal import Decimal, InvalidOperation
 import pandas as pd
-from django.db.models import Q
+from django.db.models import Prefetch, Sum, F, Q
 from django.core.paginator import Paginator
 from django.shortcuts import render
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from collections import defaultdict
 from django.forms import formset_factory
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from .utils import xirr 
 
@@ -127,6 +129,14 @@ class DisbursementViewSet(ModelViewSet):
 class NetAssetValueViewSet(ModelViewSet):
     queryset = NetAssetValue.objects.all()
     serializer_class = NetAssetValueSerializer
+
+class InvesotContactViewSet(ModelViewSet):
+    queryset = InvestorContact.objects.all()
+    serializer_class = InvestorContactSerializer
+
+class AllocationRuleViewSet(ModelViewSet):
+    queryset = AllocationRule.objects.all()
+    serializer_class = AllocationRuleSerializer
 
 #HTML Template Views
 class HomePageView(TemplateView):
@@ -343,10 +353,14 @@ class FundDetail(DetailView):
         latest_cashflow_date = max([date for date, _ in calls_n_distributions_table_data.keys()], default=None)
 
         # Fetch the last notice number in the dataset
-        last_notice_number = max(
-            [notice_number for _, notice_number in calls_n_distributions_table_data.keys()], 
-            default=0
-        ) + 1  # Increment to keep it unique
+
+        try:
+            last_notice_number = max(
+                [notice_number for _, notice_number in calls_n_distributions_table_data.keys() if notice_number is not None], 
+                default=0
+            ) + 1 # Increment to keep it unique
+        except (ValueError, TypeError):
+            last_notice_number = 1  # Fallback value
 
         # Add highest NAV as a final cash flow
         if highest_nav and latest_cashflow_date:
@@ -501,28 +515,37 @@ class InvestorsList(LoginRequiredMixin, ListView):
     context_object_name = 'investors'
 
     def get_queryset(self):
-        # Start with all investors
-        queryset = super().get_queryset()
-
+        # Prefetch primary contacts in a single query
+        primary_contacts = InvestorContact.objects.filter(
+            primary_contact=True
+        ).select_related('contact')
+        
+        queryset = Investor.objects.prefetch_related(
+            Prefetch('investorcontact_set', 
+                    queryset=primary_contacts,
+                    to_attr='primary_contacts')
+        )
+        
         # Check for a search query
         query = self.request.GET.get('q')
         if query:
-            # Filter by multiple fields using Q objects
             queryset = queryset.filter(
                 Q(name__icontains=query) |
-                Q(short_name__icontains=query)
+                Q(short_name__icontains=query) |
+                Q(reg_no__icontains=query)
             )
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        # Pull all primary contacts
-        primary_contacts = Contact.objects.filter(primary_contact=True)
-        # Annotate each investor with their primary contact
+        
+        # Create investors_data with primary contact information
         investors_data = []
         for investor in context['investors']:
-            primary_contact = primary_contacts.filter(investor = investor).first()
+            primary_contact = None
+            if hasattr(investor, 'primary_contacts') and investor.primary_contacts:
+                primary_contact = investor.primary_contacts[0].contact
+            
             investors_data.append({
                 'investor': investor,
                 'primary_contact': primary_contact
@@ -540,8 +563,11 @@ class InvestorDetail(DetailView):
         context = super().get_context_data(**kwargs)
         investor = self.object
 
-        investor_contacts = Contact.objects.filter(investor = investor)
-        primary_contact = Contact.objects.get(investor = investor, primary_contact = True)
+        investor_contacts = InvestorContact.objects.filter(
+            investor = investor
+            ).select_related('contact').order_by('contact__surname', 'contact__name')
+                                                 
+        primary_contact = investor_contacts.filter(primary_contact = True).first()
 
         context.update({
             'investor_contacts': investor_contacts,
@@ -564,11 +590,6 @@ class InvestmentDetail(DetailView):
         context = super().get_context_data(**kwargs)
         context['companies'] = Company.objects.all()
         return context
-
-class ContactsList(LoginRequiredMixin, ListView):
-    model = Contact
-    template_name = 'contacts/contacts.html'
-    context_object_name = 'contacts'
 
 class CompaniesList(LoginRequiredMixin, ListView):
     model = Company
@@ -609,30 +630,15 @@ class DeleteFund(DeleteView):
     success_url = reverse_lazy('funds')
     template_name = "funds/confirm_delete.html"
 
-class AddInvestor(FormView):
+class AddInvestor(CreateView):
+    model = Investor
     form_class = InvestorForm
     template_name = 'investors/add_investor.html'
+    context_object_name = 'investors'
     success_url = reverse_lazy('investors')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if self.request.POST:
-            context['contact_formset'] = ContactFormSet(self.request.POST)
-        else:
-            context['contact_formset'] = ContactFormSet()
-        return context
-
     def form_valid(self, form):
-        context = self.get_context_data()
-        contact_formset = context['contact_formset']
-
-        if contact_formset.is_valid():
-            self.object = form.save()
-            contact_formset.instance = self.object
-            contact_formset.save()
-            return redirect(self.success_url)
-        else:
-            return self.render_to_response(self.get_context_data(form = form))
+        return super().form_valid(form)
 
 class EditInvestor(UpdateView):
     model = Investor
@@ -643,22 +649,24 @@ class EditInvestor(UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if self.request.POST:
-            context['contact_formset'] = ContactFormSet(self.request.POST, instance=self.object)
-        else:
-            context['contact_formset'] = ContactFormSet(instance=self.object)
+        
+        # Get primary contact for display purposes
+        primary_contact = InvestorContact.objects.filter(
+            investor=self.object, 
+            primary_contact=True
+        ).select_related('contact').first()
+        
+        # Get all linked contacts
+        linked_contacts = InvestorContact.objects.filter(
+            investor=self.object
+        ).select_related('contact')
+        
+        context.update({
+            'primary_contact': primary_contact.contact if primary_contact else None,
+            'linked_contacts': linked_contacts,
+            'total_contacts': linked_contacts.count(),
+        })
         return context
-    
-    def form_valid(self, form):
-        context = self.get_context_data()
-        contact_formset = context['contact_formset']
-        if contact_formset.is_valid():
-            self.object = form.save()
-            contact_formset.instance = self.object
-            contact_formset.save()
-            return redirect(self.success_url)
-        else:
-            return self.render_to_response(self.get_context_data(form=form))
 
 class DeleteInvestor(DeleteView):
     model = Investor
@@ -733,293 +741,309 @@ class DeleteCompany(DeleteView):
     success_url = reverse_lazy('companies')  
 
 # Fund Close
-class CommittedCapitalCreateView(FormView):
-    form_class = CommittedCapitalFormSet
-    template_name = 'funds/fund_close2.html'
-    success_url = reverse_lazy('funds')
 
+class FundCloseView(DetailView):
+    model = Fund
+    template_name = "funds/fund_close.html"
+    context_object_name = 'fund'
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        committedCapital = CommittedCapital.objects.all()
-       
-        if self.request.POST:
-            context['formset'] = CommittedCapitalFormSet(self.request.POST)
-        else:
-            context['formset'] = CommittedCapitalFormSet(queryset=committedCapital)
-
-        context['fund'] = get_object_or_404(Fund, pk=self.kwargs['pk'])
-        return context
-
-    def form_valid(self, form):
-        context = self.get_context_data()
-        formset = context['formset']
-        if formset.is_valid():
-            instances = formset.save(commit=False)
-            fund = context['fund']
-            for instance in instances:
-                instance.fund = fund
-                instance.save()
-
-            # Handle summary data
-            summary_data = self.request.POST.get('summary_data', '[]')
-            print('Received Summary Data:', summary_data)  # Debugging statement
-
-            try:
-                data = json.loads(summary_data)
-                for item in data:
-                    date = item.get('date')
-                    investor_name = item.get('investor')
-                    amount = float(item.get('amount'))
-
-                    # Find or create investor
-                    investor, created = Investor.objects.get_or_create(name=investor_name)
-
-                    # Save committed capital entry
-                    CommittedCapital.objects.create(
-                        fund=fund,
-                        investor=investor,
-                        amount=amount,
-                        date = date
-                    )                    
-            except json.JSONDecodeError:
-                print('Error decoding JSON data')  # Debugging statement
-
-            return redirect(self.success_url)
-        else:
-            return self.render_to_response(self.get_context_data(form=form))
-
-class CommittedCapitalDelete(View):
-    def delete(self, request, *args, **kwargs):
-        try:
-            investorName = self.kwargs['id']
-            print(investorName,'investorName')
-            committed_capital = get_object_or_404(CommittedCapital, investor=investorName)
-
-            committed_capital.delete()
-
-            return JsonResponse({'status': 'success', 'message': 'Entry deleted successfully.'}, status=200)
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
-
-# Fund Close Simple Approach
-
-class FundCloseView(FormView):
-    template_name = "funds/fund_close2.html"
-
-    def get(self, request, pk):
-        fund = get_object_or_404(Fund, pk=pk)
-        CommittedCapitalFormSet = formset_factory(CommittedCapitalForm, extra=1, can_delete=True)
-        formset = CommittedCapitalFormSet()
-        return render(request, self.template_name, {"fund": fund, "formset": formset})
-
-    def post(self, request, pk):
-        fund = get_object_or_404(Fund, pk=pk)
-        CommittedCapitalFormSet = formset_factory(CommittedCapitalForm, extra=1, can_delete=True)
-        formset = CommittedCapitalFormSet(request.POST)
-
-        commitment_date = request.POST.get('commitment_date')
-
-        if formset.is_valid():
-            for form in formset:
-                if form.cleaned_data:
-                    committed_capital = form.save(commit=False)
-                    committed_capital.fund = fund
-                    committed_capital.date = commitment_date
-                    committed_capital.save()
-
-            return redirect("fund_close", pk=fund.pk)
+        fund = self.get_object()
         
-        else:
-            for form in formset:
-                print(formset.errors)  # If there are errors, print them
-            return render(request, self.template_name, {"fund": fund, "formset": formset})
+        # Get investors with their cumulative commitments and latest date
+        investor_data = []
+        total_committed = 0
 
-# Using Json for committed capital
-class CommittedCapitalSubmitView(View):
-    def get(self, request, *args, **kwargs):
-        try:
-            fund = get_object_or_404(Fund, pk=self.kwargs['pk'])
-            committed_capitals = CommittedCapital.objects.filter(fund=fund)
-            data = [
-                {
-                    "investor": commitment.investor.name,
-                    "amount": commitment.amount,
-                }
-                for commitment in committed_capitals
-            ]
-
-            return JsonResponse(data, safe=False, status=200)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
+        # Use the correct query to get investor names
+        from django.db.models import Max, Sum
+        commitments = CommittedCapital.objects.filter(fund=fund)
         
-    def delete(self, request, *args, **kwargs):
-        try:
-            investorName = self.kwargs['id']
-            print(investorName,'investorName')
-            committed_capital = get_object_or_404(CommittedCapital, investor=investorName)
+        # Calculate total committed
+        total_committed = commitments.aggregate(Sum('amount'))['amount__sum'] or 0
 
-            committed_capital.delete()
-
-            return JsonResponse({'status': 'success', 'message': 'Entry deleted successfully.'}, status=200)
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        # Get distinct investors with their totals and latest dates
+        investor_commitments = commitments.values('investor').annotate(
+            total_amount=Sum('amount'),
+            last_date=Max('date')
+        ).order_by('investor__name')
         
-    def post(self, request, *args, **kwargs):
-        try:      
-            data = json.loads(request.body)
-            fund = get_object_or_404(Fund, pk=self.kwargs['pk'])
+        # Fetch investor objects to get names
 
-            # Process the submitted data
-            for item in data:
-                investor_name = item.get('investor')
-                amount = float(item.get('amount'))
+        fund_interest = 0
+        total_fund_interests = 0
 
-                # Retrieve existing investor or raise an error if not found
-                try:
-                    investor = Investor.objects.get(name=investor_name)
-                except Investor.DoesNotExist:
-                    return JsonResponse({'status': 'error', 'message': f'Investor "{investor_name}" does not exist.'}, status=400)
+        for item in investor_commitments:
+            investor = Investor.objects.get(id=item['investor'])
+            if total_committed > 0:
+                fund_interest = (item['total_amount'] / total_committed) * 100
+                total_fund_interests += fund_interest
 
-                # Save committed capital entry
-                CommittedCapital.objects.create(
-                    fund=fund,
-                    investor=investor,
-                    amount=amount
-                )
-
-            return JsonResponse({'status': 'success'}, status=200)
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
-def generate_unique_number(fund):
-    max_number = NoticeNumber.objects.filter(fund=fund).aggregate(Max('number'))['number__max']
-    if max_number is not None:
-        return max_number + 1
-    else:
-        return 1  # Start at 1 if there are no existing entries
-
-class CapitalCallView(TemplateView, FormView):
-    template_name = 'funds/capital_call.html'
-    form_class = CapitalCallForm
-    success_url = reverse_lazy('funds')    
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        fund_id = self.kwargs['pk']
-        fund = Fund.objects.get(id=fund_id)
-
-        # Get commitment and called capital data for Fund
-        committed_capitals = CommittedCapital.objects.filter(fund=fund)
-        total_committed = committed_capitals.aggregate(Sum('amount'))['amount__sum']
-        capital_calls = CapitalCall.objects.filter(fund=fund)
-        total_drawn = capital_calls.values('investor').annotate(total_amount=Sum('amount'))
-
-        formset = CapitalCallFormSet(queryset=CapitalCall.objects.none())
-
-        # Calculate total drawn sum
-        total_drawn_sum = sum([draw['total_amount'] for draw in total_drawn])
-
-        # Calculate undrawn commitments
-        total_undrawn_commitment = total_committed - total_drawn_sum if total_committed and total_drawn_sum else total_committed
-
-        capital_accounts = []
-        total_interests = 0
-
-        for commitment in committed_capitals:
-            drawn_amount = next((draw['total_amount'] for draw in total_drawn if draw['investor'] == commitment.investor.id), 0)
-            undrawn_commitment = commitment.amount - drawn_amount
-            fund_interest = (commitment.amount / total_committed) if total_committed else 0
-            total_interests += fund_interest
-            capital_accounts.append({
-                'investor': commitment.investor,
-                'commitment': commitment.amount,
-                'drawn_amount': drawn_amount,
-                'undrawn_commitment': undrawn_commitment,
+            investor_data.append({
+                'investor': investor,  # Pass the investor object
+                'investor_id': investor.id,
+                'investor_name': investor.name,
+                'total_amount': item['total_amount'],
+                'last_date': item['last_date'],
                 'fund_interest': fund_interest,
             })
+#            total_committed += item['total_amount']
 
+        # Get investors without commitments to this fund
+        committed_investor_ids = [item['investor_id'] for item in investor_data]
+        available_investors = Investor.objects.exclude(
+            id__in=committed_investor_ids
+        ).order_by('name')
+        
+        # Calculate overall totals
+        total_investors = len(investor_data)
+        target_commitment = fund.target_commitment or 0
+        remaining_target = max(target_commitment - total_committed, 0)
+        progress_percentage = (total_committed / target_commitment * 100) if target_commitment else 0
+        
+        # Forms
+        commitment_form = CommittedCapitalForm()
+        commitment_form.fields['investor'].queryset = available_investors
+        
         context.update({
-            'formset': formset,
-            'fund': fund,
+            'investor_data': investor_data,
+            'available_investors': available_investors,
+            'commitment_form': commitment_form,
             'total_committed': total_committed,
-            'total_drawn_sum': total_drawn_sum,
-            'total_interests': total_interests,
-            'total_undrawn_commitment': total_undrawn_commitment,
-            'capital_accounts': capital_accounts,
+            'total_investors': total_investors,
+            'remaining_target': remaining_target,
+            'progress_percentage': progress_percentage,
+            'target_commitment': target_commitment,
+            'today': timezone.now().date(),
+            'total_fund_interests': total_fund_interests,
         })
         return context
     
     def post(self, request, *args, **kwargs):
-        fund_id = self.kwargs['pk']
-        fund = Fund.objects.get(id=fund_id)
-        formset = CapitalCallFormSet(request.POST)
+        self.object = self.get_object()
+        fund = self.object
+        
+        if 'add_commitment' in request.POST:
+            form = CommittedCapitalForm(request.POST)
+            if form.is_valid():
+                commitment = form.save(commit=False)
+                commitment.fund = fund
+                commitment.save()
+                messages.success(request, f'Commitment added for {commitment.investor.name}')
+            else:
+                # Debug form errors
+                print("Form errors:", form.errors)
+                messages.error(request, 'Please correct the errors below.')
+        
+        return redirect('fund_close', pk=fund.pk)
 
-        if formset.is_valid():
-            print("Formset is valid")
-            # Generate the notice number based on the last record for the fund
-            last_notice_number = CapitalCall.objects.filter(fund=fund).order_by('notice_number').last()
-            new_notice_number = (last_notice_number.notice_number + 1) if last_notice_number else 1
-            notice_date = formset.forms[0].cleaned_data['date']  # Use the date from the first form
-
-            for form in formset:
-                form.cleaned_data['date'] = notice_date
-                if form.cleaned_data:
-                    call_type = form.cleaned_data['call_type']
-                    amount = form.cleaned_data['amount']
-
-                    committed_capitals = CommittedCapital.objects.filter(fund=fund)
-                    total_committed = committed_capitals.aggregate(Sum('amount'))['amount__sum']
-
-            for commitment in committed_capitals:
-                if call_type.name in ['Management Fees', 'Advisory Fees']:
-                    capital_call_amount = commitment.amount * fund.man_fee / 4
-                else:
-                    capital_call_amount = (commitment.amount / total_committed) * amount
-
-                CapitalCall.objects.create(
-                    notice_number=new_notice_number,
-                    date=notice_date,
-                    fund=fund,
-                    investor=commitment.investor,
-                    call_type=call_type,
-                    amount=capital_call_amount
-                )
-
-            return redirect(reverse('capital_call', kwargs={'pk': fund.id}))
-        else:
-            print("Formset errors", formset.errors)
-        # If the formset is not valid, re-render the page with errors
-        return self.render_to_response(self.get_context_data(formset=formset))
-
-class CapitalCallCreateView(FormView):
-    form_class = CapitalCallFormSet
-    template_name = 'funds/capital_call.html'
-    success_url = reverse_lazy('funds')
-
+class InvestorCommitmentsView(LoginRequiredMixin, ListView):
+    template_name = "funds/investor_commitments.html"
+    context_object_name = 'commitments'
+    
+    def get_queryset(self):
+        self.fund = get_object_or_404(Fund, pk=self.kwargs['fund_pk'])
+        self.investor = get_object_or_404(Investor, pk=self.kwargs['investor_pk'])
+        return CommittedCapital.objects.filter(
+            fund=self.fund, 
+            investor=self.investor
+        ).order_by('-date')
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if self.request.POST:
-            context['formset'] = CapitalCallFormSet(self.request.POST, queryset=CapitalCall.objects.none())
+        context['fund'] = self.fund
+        context['investor'] = self.investor
+        
+        # Calculate total commitment
+        total_commitment = self.get_queryset().aggregate(Sum('amount'))['amount__sum'] or 0
+        context['total_commitment'] = total_commitment
+        
+        # Add form for new commitment (pre-select the investor)
+        context['commitment_form'] = CommittedCapitalForm(initial={
+            'investor': self.investor.id,  # Pass ID instead of object
+            'date': timezone.now().date()
+        })
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        self.fund = get_object_or_404(Fund, pk=self.kwargs['fund_pk'])
+        self.investor = get_object_or_404(Investor, pk=self.kwargs['investor_pk'])
+        
+        form = CommittedCapitalForm(request.POST)
+        if form.is_valid():
+            commitment = form.save(commit=False)
+            commitment.fund = self.fund
+            commitment.investor = self.investor  # Ensure investor is set
+            commitment.save()
+            messages.success(request, f'Additional commitment added for {self.investor.name}')
+            return redirect('investor_commitments', fund_pk=self.fund.pk, investor_pk=self.investor.pk)
         else:
-            context['formset'] = CapitalCallFormSet(queryset=CapitalCall.objects.none())
-        context['fund'] = get_object_or_404(Fund, pk=self.kwargs['pk'])
+            # Debug form errors
+            print("Form errors:", form.errors)
+            messages.error(request, 'Please correct the errors below.')
+            
+            # Return to the same page with form errors
+            context = self.get_context_data()
+            context['commitment_form'] = form  # Pass the form with errors
+            return render(request, self.template_name, context)
+
+# Capital Call
+
+class CapitalCallView(TemplateView):
+    template_name = "funds/capital_call.html"
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        fund_id = self.kwargs['pk']
+        fund = get_object_or_404(Fund, pk=fund_id)
+        
+        # Get all investors with commitments to this fund
+        investor_data = []
+        total_committed = Decimal('0')
+        total_drawn = Decimal('0')
+        
+        # Get committed capital data
+        commitments = CommittedCapital.objects.filter(fund=fund)
+        investor_commitments = commitments.values('investor').annotate(
+            total_committed=Sum('amount')
+        )
+        
+        # Calculate total committed
+        for item in investor_commitments:
+            total_committed += item['total_committed']
+        
+        # Get capital drawn data
+        capital_calls = CapitalCall.objects.filter(fund=fund)
+        investor_drawn = capital_calls.values('investor').annotate(
+            total_drawn=Sum('amount')
+        )
+        
+        # Create investor dictionary for drawn amounts
+        drawn_dict = {item['investor']: item['total_drawn'] for item in investor_drawn}
+        
+        # Prepare investor data
+        for item in investor_commitments:
+            investor = Investor.objects.get(id=item['investor'])
+            committed_amount = item['total_committed']
+            drawn_amount = drawn_dict.get(item['investor'], Decimal('0'))
+            undrawn_amount = committed_amount - drawn_amount
+            
+            # Calculate fund interest
+            fund_interest = Decimal('0')
+            if total_committed > 0:
+                fund_interest = (committed_amount / total_committed) * 100
+            
+            investor_data.append({
+                'investor': investor,
+                'committed_amount': committed_amount,
+                'drawn_amount': drawn_amount,
+                'undrawn_amount': undrawn_amount,
+                'fund_interest': fund_interest,
+            })
+            total_drawn += drawn_amount
+        
+        # Get all capital call items for display
+        capital_call_items = CapitalCall.objects.filter(fund=fund).values(
+            'date', 'call_type__name', 'allocation_rule__name', 'description'
+        ).annotate(
+            total_amount=Sum('amount')
+        ).order_by('-date')
+        
+        # Get detailed breakdown for each capital call item
+        item_breakdown = []
+        for item in capital_call_items:
+            breakdown = CapitalCall.objects.filter(
+                fund=fund,
+                date=item['date'],
+                description=item['description']
+            ).select_related('investor').values('investor__name').annotate(
+                amount=Sum('amount')
+            )
+            item_breakdown.append({
+                'item': item,
+                'breakdown': breakdown
+            })
+        
+        # Forms
+        capital_call_form = CapitalCallForm()
+        
+        context.update({
+            'fund': fund,
+            'investor_data': investor_data,
+            'capital_call_items': capital_call_items,
+            'item_breakdown': item_breakdown,
+            'capital_call_form': capital_call_form,
+            'total_committed': total_committed,
+            'total_drawn': total_drawn,
+            'total_undrawn': total_committed - total_drawn,
+            'call_types': CallType.objects.all(),
+            'allocation_rules': AllocationRule.objects.all(),
+        })
         return context
 
-    def form_valid(self, form):
-        context = self.get_context_data()
-        formset = context['formset']
-        if formset.is_valid():
-            instances = formset.save(commit=False)
-            fund = context['fund']
-            for instance in instances:
-                instance.fund = fund
-                instance.save()
-            return redirect(self.success_url)
-        else:
-            return self.render_to_response(self.get_context_data(form=form))
+    def post(self, request, *args, **kwargs):
+        fund = get_object_or_404(Fund, pk=self.kwargs['pk'])
+        form = CapitalCallForm(request.POST)
+        
+        if form.is_valid():
+            capital_call = form.save(commit=False)
+            capital_call.fund = fund
+            
+            # Get allocation parameters
+            allocation_rule = form.cleaned_data['allocation_rule']
+            amount = form.cleaned_data['amount']
+            date = form.cleaned_data['date']  # This is the future call funding date
+            
+            # Additional validation to ensure date is in future
+            if date <= timezone.now().date():
+                form.add_error('date', 'Call funding date must be in the future.')
+                return self.render_to_response(self.get_context_data(form=form))
+            
+            # Get investor commitments
+            investor_commitments = CommittedCapital.objects.filter(fund=fund)
+            total_committed = investor_commitments.aggregate(Sum('amount'))['amount__sum'] or Decimal('0')
+            
+            # Get drawn amounts before this future date
+            drawn_before = CapitalCall.objects.filter(
+                fund=fund, 
+                date__lt=date  # Use the future call date for cutoff
+            ).values('investor').annotate(
+                total_drawn=Sum('amount')
+            )
+            drawn_dict = {item['investor']: item['total_drawn'] for item in drawn_before}
+            total_drawn_before = sum(drawn_dict.values(), Decimal('0'))
+            
+            # Create capital calls for each investor
+            for commitment in investor_commitments:
+                investor = commitment.investor
+                committed_amount = commitment.amount
+                drawn_amount = drawn_dict.get(investor.id, Decimal('0'))
+                
+                if allocation_rule.name == 'Committed Capital':
+                    investor_share = (committed_amount / total_committed) * amount
+                elif allocation_rule.name == 'Undrawn Commitment':
+                    undrawn_amount = committed_amount - drawn_amount
+                    total_undrawn = total_committed - total_drawn_before
+                    investor_share = (undrawn_amount / total_undrawn) * amount if total_undrawn > 0 else Decimal('0')
+                else:
+                    investor_share = Decimal('0')
+                
+                if investor_share > 0:
+                    CapitalCall.objects.create(
+                        fund=fund,
+                        investor=investor,
+                        date=date,  # Use the future date
+                        call_type=capital_call.call_type,
+                        allocation_rule=capital_call.allocation_rule,
+                        description=capital_call.description,
+                        amount=investor_share
+                    )
+            
+            messages.success(request, f'Capital call scheduled for {date.strftime("%B %d, %Y")}')
+            return redirect('capital_call', pk=fund.pk)
+        
+        messages.error(request, 'Please correct the errors below.')
+        return self.render_to_response(self.get_context_data(form=form))
 
 class FormSuccessView(TemplateView):
     template_name = 'form_success.html'
@@ -1051,3 +1075,107 @@ class CustomLoginView(LoginView):
 
 class CustomLogoutView(LogoutView):
     next_page = reverse_lazy('login')
+
+
+#Contacts Administration
+
+class ContactsList(LoginRequiredMixin, ListView):
+    model = Contact
+    template_name = 'contacts/contacts.html'
+    context_object_name = 'contacts'
+
+    def get_queryset(self):
+        qs = super().get_queryset().order_by('surname', 'name')
+        q = self.request.GET.get('q')
+        if q:
+            qs = qs.filter(
+                models.Q(name__icontains=q) |
+                models.Q(surname__icontains=q) |
+                models.Q(email_address__icontains=q)
+            )
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['search_query'] = self.request.GET.get('q', '')
+        return ctx
+
+class ContactDetail(LoginRequiredMixin, DetailView):
+    model = Contact
+    template_name = 'contacts/contact_overview.html'
+    context_object_name = 'contact'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        contact = self.get_object()
+        
+        # Get all investor links with related investor data
+        investor_links = InvestorContact.objects.select_related(
+            'investor', 'investor__country', 'investor__category'
+        ).filter(contact=contact).order_by('investor__name')
+        
+        # Count statistics
+        primary_count = investor_links.filter(primary_contact=True).count()
+        board_rep_count = investor_links.filter(adv_board_rep=True).count()
+        invest_comm_count = investor_links.filter(invest_comm_rep=True).count()
+        
+        context.update({
+            'investor_links': investor_links,
+            'primary_count': primary_count,
+            'board_rep_count': board_rep_count,
+            'invest_comm_count': invest_comm_count,
+            'total_links': investor_links.count(),
+        })
+        
+        return context
+
+class InvestorContactCreateView(LoginRequiredMixin, CreateView):
+    model = InvestorContact
+    form_class = InvestorContactForm
+    template_name = 'contacts/investorcontact_form.html'
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['contact'] = get_object_or_404(Contact, pk=self.kwargs['pk'])
+        return kwargs
+    
+    def form_valid(self, form):
+        form.instance.contact = get_object_or_404(Contact, pk=self.kwargs['pk'])
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        return reverse('contact_detail', kwargs={'pk': self.kwargs['pk']})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['contact'] = get_object_or_404(Contact, pk=self.kwargs['pk'])
+        return context
+
+class InvestorContactUpdateView(LoginRequiredMixin, UpdateView):
+    model = InvestorContact
+    form_class = InvestorContactUpdateForm
+    template_name = 'contacts/investorcontact_form.html'
+    pk_url_kwarg = 'link_pk'
+    
+    def get_success_url(self):
+        return reverse('contact_detail', kwargs={'pk': self.object.contact.pk})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add the contact to the context for the template
+        context['contact'] = self.object.contact
+        return context
+
+class InvestorContactDeleteView(LoginRequiredMixin, DeleteView):
+    model = InvestorContact
+    template_name = 'contacts/investorcontact_confirm_delete.html'
+    pk_url_kwarg = 'link_pk'
+    
+    def get_success_url(self):
+        return reverse('contact_detail', kwargs={'pk': self.object.contact.pk})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['contact'] = self.object.contact
+        return context
+

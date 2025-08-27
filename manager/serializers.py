@@ -111,3 +111,13 @@ class NetAssetValueSerializer(serializers.ModelSerializer):
     class Meta:
         model = NetAssetValue
         fields = '__all__'
+
+class InvestorContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvestorContact
+        fields = '__all__'
+
+class AllocationRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AllocationRule
+        fields = '__all__'

@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.shortcuts import reverse
 from .choices import FeeFrequency, FeeBasis
+from django.db.models import Q
 
 class InvestorType(models.Model):
     category = models.CharField(max_length=100)
@@ -41,14 +42,39 @@ class Contact(models.Model):
     id_number = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=20)
     email_address = models.EmailField(max_length=100)
+
+    def __str__(self):
+        return str(self.name) + ' ' + str(self.surname)
+
+    def get_absolute_url(self):
+        return reverse('contact_detail', kwargs={'pk':self.pk})
+
+class InvestorContact(models.Model):
+    contact = models.ForeignKey(Contact,on_delete=models.CASCADE,null=False)
+    investor = models.ForeignKey(Investor,on_delete=models.CASCADE,null=False)
     primary_contact = models.BooleanField(default=False)
     adv_board_rep = models.BooleanField(default=False)
     invest_comm_rep = models.BooleanField(default=False)
     reports = models.BooleanField(default=True)
-    investor = models.ForeignKey(Investor,on_delete=models.CASCADE, null=False)
 
-    def __str__(self):
-        return str(self.name) + ' ' + str(self.surname)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['contact', 'investor'], name='uniq_contact_investor'),
+            models.UniqueConstraint(
+                fields=['investor'],
+                condition=Q(primary_contact=True),
+                name='uniq_primary_contact_per_investor'
+            )
+        ]
+
+    def save(self, *args, **kwargs):
+        # Automatically unset any other primary for this investor
+        if self.primary_contact:
+            InvestorContact.objects.filter(
+                investor=self.investor,
+                primary_contact=True
+            ).exclude(pk=self.pk).update(primary_contact=False)
+        super().save(*args, **kwargs)
 
 class InvestorDocument(models.Model):
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE,null=False)
@@ -150,7 +176,7 @@ class AllocationRule(models.Model):
 class NoticeNumber(models.Model):
     date = models.DateField(auto_now=False)
     fund = models.ForeignKey(Fund, on_delete=models.CASCADE)
-    investor = models.ForeignKey(Investor, on_delete=models.CASCADE)
+    investor = models.ForeignKey(Investor, on_delete=models.SET_NULL, null=True, blank=True)
     number = models.SmallIntegerField(default=500)
 
     def __str__(self):
@@ -184,10 +210,16 @@ class CapitalCall(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
     call_type = models.ForeignKey(CallType,on_delete=models.CASCADE)
+    allocation_rule = models.ForeignKey(AllocationRule, on_delete=models.CASCADE)
+    description = models.CharField(max_length=50, null=True)
     amount = models.DecimalField(max_digits=12,decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return str(self.fund) + ' | ' + str(self.notice_number) + ' | ' + str(self.call_type)
+
+    class Meta:
+        ordering = ['-date', 'investor__name']
 
 class ManagementFees(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)

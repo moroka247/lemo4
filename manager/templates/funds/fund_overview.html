@@ -459,118 +459,39 @@
     
     <div role="tabpanel" class="tab-pane fade" id="operations">
 
-        <div role="tabpanel" class="tab-pane fade show active" id="operations">
-            <!-- Sub-tabs Navigation -->
-            <ul class="nav nav-tabs" id="fundOperationsTabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" id="fund_closes_tab" data-bs-toggle="tab" href="#fund_closes" role="tab">Fund Closes</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="capital_calls_tab" data-bs-toggle="tab" href="#capital_calls" role="tab">Capital Calls</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="expenses_tab" data-bs-toggle="tab" href="#expenses" role="tab">Expenses</a>
-                </li>
-            </ul>
-
-            <!-- Sub-tabs Content -->
-            <div class="tab-content" id="fundOperationsContent">
-                <!-- Fund Close Content -->
-                <div class="tab-pane fade show active" id="fund_closes" role="tabpanel">
-                    <br>
-                    <div class="col-md-12">
-                        <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" style="width:80%;" href="{% url 'fund_close' pk=fund.id %}">
-                            <i class="fas fa-plus"> Create a New Fund Close</i>
-                        </a>
-                        <table class="table table-bordered" style="width:80%;">
-                            
-                            <thead>
-                                <th style="text-align:left">Investor</th>
-                                <th style="text-align:right">Total Committed</th>
-                                <th style="text-align:center">Fund Interest</th>
-                                {% for date in unique_dates %}
-                                <th style="text-align:right">{{ date | date:"d M Y" }}</th>
-                                {% endfor %}
-                            </thead>
-                            {% if investors_data %}
-                                {% for investor_data in investors_data %}
-                                <tr>
-                                    <td style="text-align: left;">{{ investor_data.investor.name }}</td>
-                                    <td style="text-align: right;">{{ investor_data.committed_amount }}</td>
-                                    <td style="text-align: center;">{{ investor_data.fund_interest_committed|percent:2 }}</td>
-                                    {% for date in unique_dates %}
-                                    <td style="text-align: right; background-color:lightyellow;">
-                                        {{ investor_data.commitments_by_date|get_value:date|default:"-" }}
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                {% endfor %}
-                            <tr class="total-row">
-                                <td style="text-align: left;"><strong>Total</strong></td>
-                                <td style="text-align: right;"><strong>{{ total_committed_capital }}</strong></td>
-                                <td style="text-align: center;"><strong>{{ total_fund_interest_committed|percent:2 }}</strong></td>
-                                {% for date in unique_dates %}
-                                <td style="text-align: right; background-color: lightyellow;"><strong>{{ total_commitments_by_date|get_value:date|default:"-" }}</strong></td>
-                                {% endfor %}
-
-                            </tr>
-                            {% else %}
-                                <tr><td><b> There are no investor commitments to display</b></td></tr>
-                            {% endif %}
-                        </table>
-                                               
-                    </div>
-                </div>
-
-                <!-- Capital Calls Content -->
-                <div class="tab-pane fade" id="capital_calls" role="tabpanel">
-                    <h5>Capital Calls</h5>
-                    <p>Details about capital calls will be displayed here.</p>
-                </div>
-
-                <!-- Expenses Content -->
-                <div class="tab-pane fade" id="expenses" role="tabpanel">
-                    <h5>Expenses</h5>
-                    <p>Details about expenses will be displayed here.</p>
-
-                    <div class="d-flex justify-content-between flex-wrap">
-                        <div class="p-2" style="width: 18%; height: 120px;">
-                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'fund_close' pk=fund.id %}">
-                                <i class="fas fa-archive fa-2x"></i><br> Fund Close
-                            </a>
-                        </div>
-                
-                        <div class="p-2" style="width: 18%; height: 120px;">
-                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'capital_call' pk=fund.id %}">
-                                <i class="fas fa-hand-holding-usd fa-2x"></i><br> Capital Call
-                            </a>
-                        </div>
-                
-                        <div class="p-2" style="width: 18%; height: 120px;">
-                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
-                                <i class="fas fa-gift fa-2x"></i><br> Distribution
-                            </a>
-                        </div>
-                
-                        <div class="p-2" style="width: 18%; height: 120px;">
-                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
-                                <i class="fas fa-money-check-alt fa-2x"></i><br> Disbursement
-                            </a>
-                        </div>
-                
-                        <div class="p-2" style="width: 18%; height: 120px;">
-                            <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
-                                <i class="fas fa-cash-register fa-2x"></i><br> Proceeds
-                            </a>
-                        </div>
-                    </div>
-
-                </div>
+        <div class="d-flex justify-content-between flex-wrap">
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'fund_close' pk=fund.id %}">
+                    <i class="fas fa-archive fa-2x"></i><br> <strong>Fund Commitments</strong>
+                </a>
+            </div>
+    
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="{% url 'capital_call' pk=fund.id %}">
+                    <i class="fas fa-hand-holding-usd fa-2x"></i><br> <strong>Capital Call</strong>
+                </a>
+            </div>
+    
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
+                    <i class="fas fa-gift fa-2x"></i><br> <strong>Distribution</strong>
+                </a>
+            </div>
+    
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
+                    <i class="fas fa-money-check-alt fa-2x"></i><br> <strong>Disbursement</strong>
+                </a>
+            </div>
+    
+            <div class="p-2" style="width: 18%; height: 120px;">
+                <a class="btn btn-outline-success btn-sm w-100 h-100 btn-bold d-flex flex-column align-items-center justify-content-center" href="#">
+                    <i class="fas fa-cash-register fa-2x"></i><br> <strong>Proceeds</strong>
+                </a>
             </div>
         </div>
-
     </div>
-
+    
 </div>
 
 <style>

@@ -20,8 +20,8 @@ Investor details
 		<div class="card card-body h-100 custom-background" style="background-color: #c1e4cb;">
 			<h4 style="font-weight:bold">Contact Information</h4>
 			<hr>
-			<p>Email: {{primary_contact.email_address}}</p>
-			<p>Phone: {{primary_contact.phone_number}}</p>
+			<p>Email: {{primary_contact.email_address|default:"N/A"}}</p>
+			<p>Phone: {{primary_contact.phone_number|default:"N/A"}}</p>
 		</div>
 	</div>
 
@@ -63,9 +63,9 @@ Investor details
                 <tr class="border-bottom"><td>Investor Category</td><td>{{investor.category}}</td></tr> 
                 <tr class="border-bottom"><td>Registration Number</td><td vertical-align: top>{{investor.reg_no}}</td></tr>
                 <tr class="border-bottom"><td>Business Address</td><td>{{investor.address}}<br>{{investor.city}}<br>{{investor.post_code}}</td></tr>
-                <tr class="border-bottom"><td>Primary Contact Person</td><td>{{primary_contact.name}}&nbsp;{{primary_contact.surname}}</td></tr> 
-                <tr class="border-bottom"><td>Contact Phone Number</td><td>{{primary_contact.phone_number}}</td></tr>
-                <tr class="border-bottom"><td>Email Address</td><td>{{primary_contact.email_address}}</td></tr>
+                <tr class="border-bottom"><td>Primary Contact Person</td><td>{{primary_contact.name|default:""}}&nbsp;{{primary_contact.surname}}</td></tr> 
+                <tr class="border-bottom"><td>Contact Phone Number</td><td>{{primary_contact.phone_number|default:""}}</td></tr>
+                <tr class="border-bottom"><td>Email Address</td><td>{{primary_contact.email_address|default:""}}</td></tr>
             </tbody>
         </table>
 
@@ -83,7 +83,7 @@ Investor details
     
         <div class="card card-body col-md-12 shadow">
             <a href='#'></a>
-            <table class="table table-sm">
+            <table class="table table-bordered table-sm">
                 <colgroup>
                     <col span="1" style="width: 20%;">
                     <col span="1" style="width: 10%;">
@@ -106,40 +106,21 @@ Investor details
                 </thead>
                 <tbody>
                 {% if investor_contacts %}
-                    {% for contact in investor_contacts %}
+                    {% for investor_contact in investor_contacts %}
                         <tr onclick="window.location='#';"  style="cursor: pointer;">
-                        <td>{{contact.name}}&nbsp;{{contact.surname}}</td>
-                        <td align="center">{{contact.phone_number}}</td>
-                        <td align="center">{{contact.email_address}}</td>
-                        <td align="center">{{contact.primary_contact}}</td>
-                        <td align="center">{{contact.adv_board_rep}}</td>
-                        <td align="center">{{contact.invest_comm_rep}}</td>
-                        <td align="center">{{contact.reports}}</td>
-                        <td align="center">
-                            <a href="#EditContact" data-bs-toggle="modal" role="modal" data-bs-target="#EditContact" class="btn btn-sm btn-warning">Edit</a>
-                            <a href="" class="btn btn-sm btn-danger">Delete</a>
-                            <div class="modal" tabindex="-1" id="EditContact">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">Investor Contact</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <form action="" method="post">
-                                            {% csrf_token %}
-                                            {{ form.as_p }}
-                                            </form>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                            <button type="button" class="btn btn-primary">Save changes</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        
-                        
+                        <td>{{investor_contact.contact.name}}&nbsp;{{investor_contact.contact.surname}}</td>
+                        <td style="text-align: center;">{{investor_contact.contact.phone_number}}</td>
+                        <td style="text-align: center;">{{investor_contact.contact.email_address}}</td>
+                        <td style="text-align: center;">{{investor_contact.primary_contact|yesno:"Yes,No"}}</td>
+                        <td style="text-align: center;">{{investor_contact.adv_board_rep|yesno:"Yes,No"}}</td>
+                        <td style="text-align: center;">{{investor_contact.invest_comm_rep|yesno:"Yes,No"}}</td>
+                        <td style="text-align: center;">{{investor_contact.reports|yesno:"Yes,No"}}</td>
+                        <td style="text-align: center;">
+                            <a href="{% url 'contact_link_edit' pk=investor_contact.contact.pk link_pk=investor_contact.pk %}" 
+                            class="btn btn-sm btn-warning">Edit</a>
+                            <a href="{% url 'contact_link_delete' pk=investor_contact.contact.pk link_pk=investor_contact.pk %}" 
+                            class="btn btn-sm btn-danger"
+                            onclick="return confirm('Are you sure you want to remove this contact link?');">Delete</a>
                         </td>
                         </tr>
                     {% endfor %}
@@ -172,7 +153,7 @@ Investor details
                     {% for file in files %}
                         <tr onclick="window.location='#';"  style="cursor: pointer;">
                             <td>{{file.description}}</td>
-                            <td align="center">
+                            <td style="text-align: center;">
                                 <a href="{{ file.inv_file.url}}" class="btn btn-sm btn-success">Download</a>
                                 <a href="#" class="btn btn-sm btn-warning">Update</a>
                                 <a href="#" class="btn btn-sm btn-danger">Delete</a>

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Commitments for {{ investor.name }} - {{ fund.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'funds' %}">Funds</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'fund_detail' pk=fund.pk %}">{{ fund.name }}</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'fund_close' pk=fund.pk %}">Fund Commitments</a></li>
+            <li class="breadcrumb-item active">{{ investor.name }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ investor.name }} - Commitments</h2>
+        <a href="{% url 'fund_close' pk=fund.pk %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Fund Close
+        </a>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Commitment Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Investor:</strong> {{ investor.name }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Fund:</strong> {{ fund.name }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Total Committed:</strong> {{ fund.currency }} {{ total_commitment|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Additional Commitment -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Add Additional Commitment</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {% if commitment_form.investor %}
+                    {{ commitment_form.investor }}  <!-- This will be hidden if pre-selected -->
+                {% endif %}
+                <div class="row">
+                    <div class="col-md-4">
+                        {{ commitment_form.amount|as_crispy_field }}
+                    </div>
+                    <div class="col-md-4">
+                        {{ commitment_form.date|as_crispy_field }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-success w-100" name="add_commitment">
+                            <i class="fas fa-plus"></i> Add Commitment
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Historical Commitments -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Historical Commitments</h5>
+            <span class="badge bg-primary">{{ commitments.count }} Entries</span>
+        </div>
+        <div class="card-body">
+            {% if commitments %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th class="text-end">Amount ({{ fund.currency }})</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for commitment in commitments %}
+                        <tr>
+                            <td>{{ commitment.date|date:"M d, Y" }}</td>
+                            <td class="text-end">{{ commitment.amount|floatformat:2 }}</td>
+                            <td class="text-center">
+                                <a href="#" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="#" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-success">
+                            <td><strong>Total</strong></td>
+                            <td class="text-end"><strong>{{ total_commitment|floatformat:2 }}</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No commitments recorded yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

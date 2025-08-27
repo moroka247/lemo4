@@ -11,8 +11,6 @@ def percent(value, decimals=4):
     except (TypeError, ValueError):
         return ''
 
-
-
 @register.filter
 def div(value, arg):
     """Safely divide two numbers."""
@@ -51,3 +49,29 @@ def bracket_negative(value):
         return f"{value:,.2f}"
     except (ValueError, TypeError):
         return value  # Return as-is if it's not a number
+
+@register.filter
+def subtract(value, arg):
+    return value - arg
+
+@register.filter
+def divide(value, arg):
+    if arg == 0:
+        return 0
+    return value / arg
+
+@register.filter
+def multiply(value, arg):
+    return value * arg
+
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)
+
+@register.filter
+def first_investor(queryset, investor_id):
+    for item in queryset:
+        if item.investor.id == int(investor_id):
+            return item.investor
+    return None

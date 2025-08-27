@@ -29,7 +29,8 @@ router.register('currencies', views.CurrencyViewSet, basename='currencies')
 router.register('industry', views.IndustryViewSet, basename='industry')
 router.register('instrument', views.InstrumentViewSet, basename='instrument')
 router.register('net-asset-value', views.NetAssetValueViewSet, basename='net-asset-value')
-
+router.register('investor-contact', views.InvesotContactViewSet, basename='investor-contact')
+router.register('allocation-rule', views.AllocationRuleViewSet, basename='allocation-rule')
 
 #investors_router = routers.NestedDefaultRouter(router, 'investors', lookup='investors_pk')
 #investors_router.register('contacts',views.ContactViewSet, basename='investor-contacts')
@@ -49,10 +50,9 @@ urlpatterns = [
     path('add_fund/', AddFund.as_view(), name='add_fund'),
     path('edit_fund/<int:pk>/', EditFund.as_view(), name='edit_fund'),
     path('delete_fund/<int:pk>/', DeleteFund.as_view(), name='delete_fund'),
-#    path('fund/<int:pk>/commit/', CommittedCapitalCreateView.as_view(), name='fund_close'),
+    # Fund Operations
     path('funds/<int:pk>/commit/', FundCloseView.as_view(), name='fund_close'),
-    path('delete_summary-data/<str:pk>', CommittedCapitalDelete.as_view(), name='delete_summary_data'),
-    path('summary-data/<int:pk>', CommittedCapitalSubmitView.as_view(), name='save_summary_data'),
+    path('funds/<int:fund_pk>/investor/<int:investor_pk>/commitments/', InvestorCommitmentsView.as_view(), name='investor_commitments'),
     path('fund/<int:pk>/capital_call/', CapitalCallView.as_view(), name='capital_call'),
     # Investors
     path('investors/', InvestorsList.as_view(), name='investors'),
@@ -74,9 +74,15 @@ urlpatterns = [
     path('delete_company/<int:pk>/', DeleteCompany.as_view(), name='delete_company'),
     # Contacts
     path('contacts/', ContactsList.as_view(), name='contacts'),
+    path('contacts/<int:pk>', ContactDetail.as_view(),name='contact_detail'),
     path('add_contact/', AddContact.as_view(), name='add_contact'),
     path('edit_contact/<int:pk>/', EditContact.as_view(), name='edit_contact'),
     path('delete_contact/<int:pk>/', DeleteContact.as_view(), name='delete_contact'),
+
+    path('contacts/<int:pk>/links/add/', InvestorContactCreateView.as_view(), name='contact_link_add'),
+    path('contacts/<int:pk>/links/<int:link_pk>/edit/', InvestorContactUpdateView.as_view(), name='contact_link_edit'),
+    path('contacts/<int:pk>/links/<int:link_pk>/delete/', InvestorContactDeleteView.as_view(), name='contact_link_delete'),
+
     #Reports
     path('dashboard/', Dashboard.as_view(), name='dashboard'),
     

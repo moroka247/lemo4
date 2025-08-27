@@ -1,0 +1,19 @@
+<table class="table table-bordered table-sm">
+  <thead>
+    <tr>
+      <th>Investor</th>
+      <th>Primary</th>
+      <th>Advisory Board</th>
+      <th>Invest Committee</th>
+      <th>Reports</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for link in links %}
+      {% include "contacts/_link_row.html" %}
+    {% empty %}
+      <tr><td colspan="6" class="text-muted">No investors linked.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

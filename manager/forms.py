@@ -1,6 +1,7 @@
+from django.utils import timezone
 from django import forms
 from django.forms import inlineformset_factory, modelformset_factory, BaseFormSet
-from . models import Investor, Fund, Investment, Company, CommittedCapital, Contact, CapitalCall, NoticeNumber, CallType
+from . models import Investor, Fund, Investment, Company, CommittedCapital, Contact, CapitalCall, InvestorContact, CallType
 
 class InvestorForm(forms.ModelForm):
     class Meta:
@@ -23,39 +24,82 @@ class CompanyForm(forms.ModelForm):
         model = Company
         fields = ['name','short_name','registration_no','description','industry','country']
 
-class ContactForm(forms.ModelForm):
-    class Meta:
-        model = Contact
-        fields= ['primary_contact','name','surname','phone_number','email_address','investor']
-
-ContactFormSet = inlineformset_factory(Investor, Contact, form=ContactForm, extra=1)
-
 class CommittedCapitalForm(forms.ModelForm):
     class Meta:
         model = CommittedCapital
-        fields = ['investor', 'amount']
+        fields = ['investor', 'amount', 'date']
         widgets = {
-            'investor': forms.Select(attrs={'class': 'form-select'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-control text-right', 'placeholder': '0.00'}),
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'investor': forms.Select(attrs={'class': 'form-control'}),
         }
-
-CommittedCapitalFormSet = modelformset_factory(CommittedCapital, form=CommittedCapitalForm, extra=1, can_delete=True)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['date'].initial = timezone.now().date()
+        
+        # Hide investor field if it's pre-selected
+        if 'investor' in self.initial:
+            self.fields['investor'].widget = forms.HiddenInput()
+        
+CommittedCapitalFormSet = inlineformset_factory(
+    Fund,
+    CommittedCapital,
+    form=CommittedCapitalForm,
+    extra=1,
+    can_delete=True,
+    fields=['investor', 'amount', 'date']
+)
 
 class CapitalCallForm(forms.ModelForm):
     class Meta:
         model = CapitalCall
-        fields = ['date', 'call_type', 'amount']
+        fields = ['date', 'call_type', 'allocation_rule', 'description', 'amount']
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
+            'date': forms.DateInput(attrs={
+                'type': 'date', 
+                'class': 'form-control'
+            }),
+            'call_type': forms.Select(attrs={'class': 'form-control'}),
+            'allocation_rule': forms.Select(attrs={'class': 'form-control'}),
+            'description': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'E.g., Q2 2024 Capital Call for Acquisitions'
+            }),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
         }
-
+        labels = {
+            'date': 'Call Funding Date',
+            'description': 'Call Description',
+        }
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['call_type'].queryset = CallType.objects.all()
+        # Set initial date to today, but user can select any date
+        self.fields['date'].initial = timezone.now().date()
 
-CapitalCallFormSet = modelformset_factory(
-    CapitalCall,
-    form=CapitalCallForm,
-    extra=1,
-    can_delete=True
-)
+class ContactForm(forms.ModelForm):
+    class Meta:
+        model = Contact
+        fields= ['name','surname','phone_number','email_address']
+
+class InvestorContactForm(forms.ModelForm):
+    class Meta:
+        model = InvestorContact
+        fields = ['investor', 'primary_contact', 'adv_board_rep', 'invest_comm_rep', 'reports']
+
+    def __init__(self, *args, contact=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.contact = contact
+        if contact:
+            linked = InvestorContact.objects.filter(contact=contact).values_list('investor_id', flat=True)
+            self.fields['investor'].queryset = Investor.objects.exclude(id__in=linked)
+            
+            if not self.fields['investor'].queryset.exists():
+                self.fields['investor'].help_text = "No available investors to link"
+
+class InvestorContactUpdateForm(forms.ModelForm):
+    class Meta:
+        model = InvestorContact
+        fields = ['primary_contact', 'adv_board_rep', 'invest_comm_rep', 'reports']

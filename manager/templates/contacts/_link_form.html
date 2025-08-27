@@ -1,0 +1,25 @@
+<div class="card card-body" id="link-form-card">
+    {% if form.fields.investor.disabled %}
+    <div class="alert alert-info">
+        All investors are already linked to this contact.
+    </div>
+
+    <button type="button" class="btn btn-sm btn-secondary" 
+            hx-on:click="this.closest('#link-form-card').remove()">
+        Close
+    </button>
+    {% else %}
+    <form hx-post="{% url 'contact_link_create' pk=contact.pk %}"
+          hx-target="#links-table"
+          hx-swap="outerHTML"
+          hx-on::after-request="if(event.detail.successful) { document.getElementById('link-form-card').remove(); }">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <button type="submit" class="btn btn-sm btn-success">Add</button>
+        <button type="button" class="btn btn-sm btn-secondary" 
+              hx-on:click="this.closest('#link-form-card').remove()">
+            Cancel
+        </button>
+    </form>
+  {% endif %}
+</div>

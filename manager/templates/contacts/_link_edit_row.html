@@ -1,0 +1,20 @@
+<tr id="link-{{ link.pk }}">
+  <td colspan="6">
+    <form hx-post="{% url 'contact_link_update' pk=contact.pk link_pk=link.pk %}"
+          hx-target="#link-{{ link.pk }}"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      {{ form|crispy }}
+        <button type="submit" class="btn btn-sm btn-success" style="color: #28a745 !important; font-size: 1rem; text-decoration: none;">
+            <i class="fas fa-save"></i>Save
+        </button>
+
+        <button type="button" class="btn btn-sm btn-secondary" style="color: #6c757d !important; font-size: 1rem; text-decoration: none;"
+              hx-get="{% url 'contact_links' pk=contact.pk %}"
+              hx-target="#links-table"
+              hx-swap="outerHTML">
+            <i class="fas fa-times"></i>Cancel
+        </button>
+    </form>
+  </td>
+</tr>

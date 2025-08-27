@@ -33,24 +33,22 @@ Contacts home
         <i class="fas fa-plus"> Add New Contact</i>
     </a>
 
-    <table class="table table-bordered table-sm">
+    <table class="table table-bordered table-hover table-sm">
         <thead class="border-bottom font-weight-bold">
             <tr class="" style="font-weight:bold">
                 <th>Full name</th>
-                <th>Organisation</th>
                 <th>Phone Number</th>
                 <th>Contact Email</th>
-                <th align="center">Actions</th>
+                <th style="text-align: center;">Actions</th>
             </tr>
         </thead>
         <tbody>
         {% for contact in contacts %}
-            <tr class="border-bottom">
+            <tr class="border-bottom" onclick="window.location='{{contact.get_absolute_url}}';"  style="cursor: pointer;">
                 <td>{{ contact.name}}&nbsp{{ contact.surname }}</td>
-                <td>{{ contact.investor }}</td>
                 <td>{{ contact.phone_number }}</td>
                 <td>{{ contact.email_address }}</td>
-                <td align="center">
+                <td style="text-align: center;">
                     <a href="{% url 'edit_contact' pk=contact.id %}" style="color: #28a745; font-size: 1rem;">
                         <i class="fas fa-edit"></i>
                     </a>&nbsp;&nbsp;&nbsp;

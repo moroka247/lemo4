@@ -27,6 +27,18 @@
     <!-- htmx -->    
     <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
 
+    <script>
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+        document.body.addEventListener('htmx:configRequest', (event) => {
+            const token = getCookie('csrftoken');
+            if (token) event.detail.headers['X-CSRFToken'] = token;
+        });
+    </script>
+
     <title>LEMO | {% block title %}Home{% endblock title %}</title>
 
 </head>

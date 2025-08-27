@@ -1,0 +1,22 @@
+<tr id="link-{{ link.pk }}">
+    <td><a href="{{ link.investor.get_absolute_url }}">{{ link.investor.name }}</a></td>
+    <td>{{ link.primary_contact|yesno:"Yes,No" }}</td>
+    <td>{{ link.adv_board_rep|yesno:"Yes,No" }}</td>
+    <td>{{ link.invest_comm_rep|yesno:"Yes,No" }}</td>
+    <td>{{ link.reports|yesno:"Yes,No" }}</td>
+    <td>
+        <button class="btn btn-sm btn-primary btn-sm"
+                hx-get="{% url 'contact_link_edit' pk=contact.pk link_pk=link.pk %}"
+                hx-target="#link-{{ link.pk }}"
+                hx-swap="outerHTML">
+            Edit
+        </button>
+        <button class="btn btn-sm btn-danger"
+                hx-post="{% url 'contact_link_delete' pk=contact.pk link_pk=link.pk %}"
+                hx-confirm="Remove this link?"
+                hx-target="#links-table"
+                hx-swap="outerHTML">
+            Delete
+        </button>
+    </td>
+</tr>

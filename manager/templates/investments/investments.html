@@ -35,11 +35,11 @@ Investments home
             <tr class="" style="font-weight:bold">
                 <th>Company name</th>
                 <th>Fund name</th>
-                <th align="center">Instrument</th>
-                <th align="right">Committed</th>
-                <th align="right">Invested</th>
-                <th align="center">Perf. status</th>
-                <th align="center">Actions</th>
+                <th style="text-align: center;">Instrument</th>
+                <th style="text-align: right;">Committed</th>
+                <th style="text-align: right;">Invested</th>
+                <th style="text-align: center;">Perf. status</th>
+                <th style="text-align: center;">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -48,11 +48,11 @@ Investments home
                     <tr class="border-bottom" onclick="window.location='{{investment.get_absolute_url}}';"  style="cursor: pointer;">
                         <td>{{investment.company}}</td>
                         <td>{{investment.fund}}</td>
-                        <td align="center">{{investment.instrument}}</td>
-                        <td align="right">{{investment.committed_amount}}</td>
-                        <td align="right">{{investment.invested_amount}}</td>
-                        <td align="center">Performing</td>
-                        <td align="center">
+                        <td style="text-align: center;">{{investment.instrument}}</td>
+                        <td style="text-align: right;">{{investment.committed_amount}}</td>
+                        <td style="text-align: right;">{{investment.invested_amount}}</td>
+                        <td style="text-align: center;">Performing</td>
+                        <td style="text-align: center;">
                             <a href="{% url 'edit_investment' pk=investment.id %}" style="color: #28a745; font-size: 1rem;">
                                 <i class="fas fa-edit"></i>
                             </a> &nbsp;&nbsp;&nbsp;

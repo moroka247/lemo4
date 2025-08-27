@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Maintain Contact: {{ contact }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h1>Contact Details</h1>
+  <hr>
+  
+  <!-- Contact Information -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Personal Information</h5>
+        </div>
+        <div class="card-body">
+          <p><strong>Name:</strong> {{ contact.name }} {{ contact.surname }}</p>
+          <p><strong>Phone:</strong> {{ contact.phone_number }}</p>
+          <p><strong>Email:</strong> {{ contact.email_address }}</p>
+          <p><strong>Business Address:</strong> Address </p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Linked Investors Summary</h5>
+        </div>
+        <div class="card-body">
+          <p><strong>Total Investors:</strong> {{ total_links }}</p>
+          <p><strong>Primary Contacts:</strong> {{ primary_count }}</p>
+          <p><strong>Advisory Board Reps:</strong> {{ board_rep_count }}</p>
+          <p><strong>Investment Committee Reps:</strong> {{ invest_comm_count }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Linked Investors Section -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="card-title mb-0">Linked Investors</h5>
+      <a href="{% url 'contact_link_add' pk=contact.pk %}" class="btn btn-success btn-sm">
+            <i class="fas fa-plus"></i> Link Investor
+      </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Investor</th>
+                    <th style="text-align: center;">Primary</th>
+                    <th style="text-align: center;">Advisory Board</th>
+                    <th style="text-align: center;">Invest Committee</th>
+                    <th style="text-align: center;">Reports</th>
+                    <th style="text-align: center;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for link in investor_links %}
+            <tr id="link-{{ link.pk }}">
+              <td><a href="{{ link.investor.get_absolute_url }}">{{ link.investor.name }}</a></td>
+              <td style="text-align: center;">{{ link.primary_contact|yesno:"Yes,No" }}</td>
+              <td style="text-align: center;">{{ link.adv_board_rep|yesno:"Yes,No" }}</td>
+              <td style="text-align: center;">{{ link.invest_comm_rep|yesno:"Yes,No" }}</td>
+              <td style="text-align: center;">{{ link.reports|yesno:"Yes,No" }}</td>
+              <td style="text-align: center;">
+                    <a href="{% url 'contact_link_edit' pk=contact.pk link_pk=link.pk %}" 
+                            style="color: #28a745; font-size: 1rem; text-decoration: none;">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{% url 'contact_link_delete' pk=contact.pk link_pk=link.pk %}" 
+                            style="color: #dc3545; font-size: 1rem; text-decoration: none;"
+                            onclick="return confirm('Are you sure you want to remove this investor link?');">
+                        <i class="fas fa-trash-alt"></i>
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-muted text-center">No investors linked to this contact.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
