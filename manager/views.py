@@ -23,7 +23,7 @@ import requests
 import json
 from decimal import Decimal, InvalidOperation
 import pandas as pd
-from django.db.models import Prefetch, Sum, F, Q
+from django.db.models import Prefetch, Count, Sum, Max, F, Q
 from django.core.paginator import Paginator
 from django.shortcuts import render
 from django.db import IntegrityError, transaction
@@ -33,8 +33,9 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.utils import timezone
+from datetime import datetime
 from django.utils.dateparse import parse_date
-from .utils import xirr 
+from .utils import xirr
 
 # API Views
 class CurrencyViewSet(ModelViewSet):
@@ -149,7 +150,7 @@ class HomePageView(TemplateView):
 
 class FundsList(LoginRequiredMixin, ListView):
     model = Fund
-    template_name = 'funds/funds.html'
+    template_name = 'funds/funds2.html'
     context_object_name = 'funds'
 
     def get_context_data(self, **kwargs):
@@ -181,13 +182,20 @@ class FundsList(LoginRequiredMixin, ListView):
                 'distributions': distributions,
             })
 
+            # Calculate totals for summary
+            total_committed = sum(item['committed_capital'] for item in funds_data)
+            total_called = sum(item['called_capital'] for item in funds_data)
+
+            context['total_committed'] = total_committed
+            context['total_called'] = total_called
+
         #Pass the structured data to the template
         context['funds_data'] = funds_data
         return context
 
 class FundDetail(DetailView):
     model = Fund
-    template_name = 'funds/fund_overview.html'
+    template_name = 'funds/fund_overview3.html'
     context_object_name = 'fund'
 
     def get_context_data(self, **kwargs):
@@ -511,19 +519,24 @@ class FundDetail(DetailView):
 
 class InvestorsList(LoginRequiredMixin, ListView):
     model = Investor
-    template_name = 'investors/investors.html'
+    template_name = 'investors/investors2.html'
     context_object_name = 'investors'
 
     def get_queryset(self):
-        # Prefetch primary contacts in a single query
+        # Prefetch primary contacts
         primary_contacts = InvestorContact.objects.filter(
             primary_contact=True
         ).select_related('contact')
         
+        # Annotate with commitment and capital call sums
         queryset = Investor.objects.prefetch_related(
             Prefetch('investorcontact_set', 
                     queryset=primary_contacts,
                     to_attr='primary_contacts')
+        ).annotate(
+            total_committed=Sum('committedcapital__amount'),
+            total_called=Sum('capitalcall__amount'),
+            funds_count=Count('committedcapital__fund', distinct=True)
         )
         
         # Check for a search query
@@ -539,20 +552,36 @@ class InvestorsList(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Create investors_data with primary contact information
         investors_data = []
+        total_committed = 0
+        total_called = 0
+        
         for investor in context['investors']:
+            # Get primary contact
             primary_contact = None
             if hasattr(investor, 'primary_contacts') and investor.primary_contacts:
                 primary_contact = investor.primary_contacts[0].contact
             
+            # Get annotated values
+            investor_committed = investor.total_committed or 0
+            investor_called = investor.total_called or 0
+            funds_count = investor.funds_count or 0
+            
+            total_committed += investor_committed
+            total_called += investor_called
+            
             investors_data.append({
                 'investor': investor,
-                'primary_contact': primary_contact
+                'primary_contact': primary_contact,
+                'total_committed': investor_committed,
+                'total_called': investor_called,
+                'funds_count': funds_count
             })
 
         context['investors_data'] = investors_data
         context['search_query'] = self.request.GET.get('q', '')
+        context['total_committed'] = total_committed
+        context['total_called'] = total_called
         return context
 
 class InvestorDetail(DetailView):
@@ -755,8 +784,6 @@ class FundCloseView(DetailView):
         investor_data = []
         total_committed = 0
 
-        # Use the correct query to get investor names
-        from django.db.models import Max, Sum
         commitments = CommittedCapital.objects.filter(fund=fund)
         
         # Calculate total committed
@@ -768,8 +795,6 @@ class FundCloseView(DetailView):
             last_date=Max('date')
         ).order_by('investor__name')
         
-        # Fetch investor objects to get names
-
         fund_interest = 0
         total_fund_interests = 0
 
@@ -780,14 +805,13 @@ class FundCloseView(DetailView):
                 total_fund_interests += fund_interest
 
             investor_data.append({
-                'investor': investor,  # Pass the investor object
+                'investor': investor,
                 'investor_id': investor.id,
                 'investor_name': investor.name,
                 'total_amount': item['total_amount'],
                 'last_date': item['last_date'],
                 'fund_interest': fund_interest,
             })
-#            total_committed += item['total_amount']
 
         # Get investors without commitments to this fund
         committed_investor_ids = [item['investor_id'] for item in investor_data]
@@ -801,14 +825,9 @@ class FundCloseView(DetailView):
         remaining_target = max(target_commitment - total_committed, 0)
         progress_percentage = (total_committed / target_commitment * 100) if target_commitment else 0
         
-        # Forms
-        commitment_form = CommittedCapitalForm()
-        commitment_form.fields['investor'].queryset = available_investors
-        
         context.update({
             'investor_data': investor_data,
             'available_investors': available_investors,
-            'commitment_form': commitment_form,
             'total_committed': total_committed,
             'total_investors': total_investors,
             'remaining_target': remaining_target,
@@ -823,17 +842,75 @@ class FundCloseView(DetailView):
         self.object = self.get_object()
         fund = self.object
         
-        if 'add_commitment' in request.POST:
-            form = CommittedCapitalForm(request.POST)
-            if form.is_valid():
-                commitment = form.save(commit=False)
-                commitment.fund = fund
-                commitment.save()
-                messages.success(request, f'Commitment added for {commitment.investor.name}')
-            else:
-                # Debug form errors
-                print("Form errors:", form.errors)
-                messages.error(request, 'Please correct the errors below.')
+        # Only handle batch commitments
+        if 'add_commitments' in request.POST:
+            # Handle multiple commitments
+            date_str = request.POST.get('date')
+            investor_ids = request.POST.getlist('investors')
+            amounts = request.POST.getlist('amounts')
+            
+            if not date_str:
+                messages.error(request, 'Please select a date.')
+                return redirect('fund_close', pk=fund.pk)
+            
+            try:
+                date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                if date > timezone.now().date():
+                    messages.error(request, 'Cannot add commitments for future dates.')
+                    return redirect('fund_close', pk=fund.pk)
+            except ValueError:
+                messages.error(request, 'Invalid date format.')
+                return redirect('fund_close', pk=fund.pk)
+            
+            success_count = 0
+            errors = []
+            
+            for i, (investor_id, amount_str) in enumerate(zip(investor_ids, amounts)):
+                if not investor_id or not amount_str:
+                    continue  # Skip empty rows
+                
+                try:
+                    investor = Investor.objects.get(id=investor_id)
+                    amount = Decimal(amount_str)
+                    
+                    if amount <= 0:
+                        errors.append(f"Row {i+1}: Amount must be greater than zero")
+                        continue
+                    
+                    # Check if investor already has a commitment on this date
+                    existing_commitment = CommittedCapital.objects.filter(
+                        fund=fund,
+                        investor=investor,
+                        date=date
+                    ).exists()
+                    
+                    if existing_commitment:
+                        errors.append(f"Row {i+1}: {investor.name} already has a commitment on {date}")
+                        continue
+                    
+                    # Create new commitment
+                    CommittedCapital.objects.create(
+                        fund=fund,
+                        investor=investor,
+                        date=date,
+                        amount=amount
+                    )
+                    success_count += 1
+                    
+                except (Investor.DoesNotExist, ValueError, InvalidOperation) as e:
+                    errors.append(f"Row {i+1}: Error processing commitment - {str(e)}")
+                    continue
+            
+            if success_count > 0:
+                messages.success(request, 
+                    f'Successfully added {success_count} commitment(s) for {date}.')
+            
+            if errors:
+                for error in errors:
+                    messages.error(request, error)
+            
+            if success_count == 0 and not errors:
+                messages.warning(request, 'No commitments were added. Please check your inputs.')
         
         return redirect('fund_close', pk=fund.pk)
 

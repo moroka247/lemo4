@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
+{% load custom_filters %}
 
 {% block title %}Fund Close: {{ fund.name }}{% endblock %}
 
 {% block content %}
 <div class="container">
-
     <!-- Breadcrumb Navigation -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
@@ -14,7 +14,6 @@
             <li class="breadcrumb-item active">Fund Commitments</li>
         </ol>
     </nav>
-
 
     <!-- Fund Summary Section -->
     <div class="row mb-4">
@@ -25,7 +24,7 @@
                 </div>
                 <div class="card-body">
                     <p><strong>Fund Name:</strong> {{ fund.name }}</p>
-                    <p><strong>Target Commitment:</strong> {{ fund.currency }} {{ target_commitment|floatformat:2 }}</p>
+                    <p><strong>Target Commitment:</strong> {{ fund.currency.symbol }}{{ target_commitment|floatformat:2 }}</p>
                     <p><strong>Status:</strong> {{ fund.get_status_display }}</p>
                 </div>
             </div>
@@ -37,8 +36,8 @@
                     <h5 class="card-title mb-0">Commitment Summary</h5>
                 </div>
                 <div class="card-body">
-                    <p><strong>Total Committed:</strong> {{ fund.currency }} {{ total_committed|floatformat:2 }}</p>
-                    <p><strong>Remaining Target:</strong> {{ fund.currency }} {{ remaining_target|floatformat:2 }}</p>
+                    <p><strong>Total Committed:</strong> {{ fund.currency.symbol }}{{ total_committed|floatformat:2 }}</p>
+                    <p><strong>Remaining Target:</strong> {{ fund.currency.symbol }}{{ remaining_target|floatformat:2 }}</p>
                     <p><strong>Number of Investors:</strong> {{ total_investors }}</p>
                     <div class="progress mt-2">
                         <div class="progress-bar bg-success" 
@@ -51,32 +50,81 @@
         </div>
     </div>
 
-    <!-- Add New Commitment Form -->
+    <!-- Add Multiple Commitments Form - Collapsible -->
     <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Add New Investor Commitment</h5>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Add Investor Commitments</h5>
+            <button class="btn btn-sm btn-success" type="button" data-bs-toggle="collapse" data-bs-target="#commitmentForm">
+                <i class="fas fa-plus"></i> Add Investor Commitments
+            </button>
         </div>
-        <div class="card-body">
-            <form method="post" class="row g-3 align-items-end">
+        <div class="card-body collapse" id="commitmentForm">
+            <form method="post" id="commitment-form">
                 {% csrf_token %}
-                <input type="hidden" name="add_commitment" value="true">
+                <input type="hidden" name="add_commitments" value="true">
                 
-                <div class="col-md-4">
-                    {{ commitment_form.investor|as_crispy_field }}
+                <!-- Date Selection - Single date for all commitments -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="commitment-date" class="form-label">Commitment Date *</label>
+                        <input type="date" class="form-control" id="commitment-date" name="date" 
+                               value="{{ today|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="col-md-8 d-flex align-items-end">
+                        <div class="form-text">
+                            This date will apply to all commitments in this batch
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="col-md-3">
-                    {{ commitment_form.amount|as_crispy_field }}
+                <!-- Multiple Commitments Formset -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6>Investor Commitments</h6>
                 </div>
                 
-                <div class="col-md-3">
-                    {{ commitment_form.date|as_crispy_field }}
+                <div id="commitment-items">
+                    <!-- Initial 3 formsets -->
+                    {% for i in "123" %}
+                    <div class="commitment-item mb-3 p-3 border rounded">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label">Investor *</label>
+                                <select name="investors" class="form-control investor-select" required>
+                                    <option value="">Select Investor</option>
+                                    {% for investor in available_investors %}
+                                    <option value="{{ investor.id }}">{{ investor.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Amount ({{ fund.currency.symbol }}) *</label>
+                                <input type="number" name="amounts" class="form-control" 
+                                       step="0.01" min="0.01" placeholder="Amount" required>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-danger remove-item">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
                 
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-success w-100">
-                        <i class="fas fa-plus"></i> Add
+                <!-- Add button at the bottom -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-item">
+                        <i class="fas fa-plus me-1"></i> Add Another Investor
                     </button>
+                    
+                    <div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> Save Commitments
+                        </button>
+                        <button type="button" class="btn btn-secondary ms-2" data-bs-toggle="collapse" data-bs-target="#commitmentForm">
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -94,7 +142,7 @@
                     <thead>
                         <tr>
                             <th>Investor</th>
-                            <th class="text-end">Commitment ({{ fund.currency }})</th>
+                            <th class="text-end">Commitment ({{ fund.currency.symbol }})</th>
                             <th class="text-center">Fund Interest</th>
                             <th class="text-center">Last Commitment Date</th>
                             <th class="text-center">Actions</th>
@@ -105,7 +153,7 @@
                         <tr>
                             <td>{{ data.investor.name }}</td>
                             <td class="text-end">{{ data.total_amount|floatformat:2 }}</td>
-                            <td class="text-center"> {{ data.fund_interest|floatformat:2 }}% </td>
+                            <td class="text-center">{{ data.fund_interest|floatformat:2 }}%</td>
                             <td class="text-center">{{ data.last_date|date:"M d, Y" }}</td>
                             <td class="text-center">
                                 <a href="{% url 'investor_commitments' fund_pk=fund.pk investor_pk=data.investor_id %}" 
@@ -116,7 +164,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" class="text-center text-muted">No commitments yet</td>
+                            <td colspan="5" class="text-center text-muted">No commitments yet</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -133,94 +181,151 @@
         </div>
     </div>
 </div>
-
-<!-- Investor Details Modal -->
-<div class="modal fade" id="investorModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="investorModalLabel">Investor Commitments</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <h6 id="modal-investor-name"></h6>
-                
-                <!-- Historical commitments will be loaded here -->
-                <div id="investor-commitments">
-                    <p class="text-muted">Loading commitments...</p>
-                </div>
-                
-                <!-- Form to add additional commitment -->
-                <hr>
-                <h6>Add Additional Commitment</h6>
-                <form method="post" id="additional-commitment-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="add_commitment" value="true">
-                    <input type="hidden" id="modal-investor-id" name="investor">
-                    
-                    <div class="row g-3">
-                        <div class="col-md-5">
-                            <label for="modal-amount" class="form-label">Amount ($)</label>
-                            <input type="number" class="form-control" id="modal-amount" name="amount" step="0.01" min="0.01" required>
-                        </div>
-                        
-                        <div class="col-md-5">
-                            <label for="modal-date" class="form-label">Date</label>
-                            <input type="date" class="form-control" id="modal-date" name="date" value="{{ today|date:'Y-m-d' }}" required>
-                        </div>
-                        
-                        <div class="col-md-2">
-                            <label class="form-label">&nbsp;</label>
-                            <button type="submit" class="btn btn-primary w-100">Add</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const investorModal = new bootstrap.Modal(document.getElementById('investorModal'));
-    const modalTitle = document.getElementById('investorModalLabel');
-    const modalInvestorName = document.getElementById('modal-investor-name');
-    const modalInvestorId = document.getElementById('modal-investor-id');
-    const investorCommitments = document.getElementById('investor-commitments');
+    const addButton = document.getElementById('add-item');
+    const commitmentItems = document.getElementById('commitment-items');
+    let itemCount = 3; // Start with 3 formsets
     
-    // Handle investor modal opening
-    document.querySelectorAll('[data-bs-target="#investorModal"]').forEach(button => {
-        button.addEventListener('click', function() {
-            const investorId = this.dataset.investorId;
-            const investorName = this.dataset.investorName;
-            
-            modalTitle.textContent = 'Manage ' + investorName + ' Commitments';
-            modalInvestorName.textContent = investorName;
-            modalInvestorId.value = investorId;
-            
-            // Load historical commitments (simplified - could be AJAX in real implementation)
-            loadInvestorCommitments(investorId);
-        });
-    });
+    // Store available investors for cloning
+    const availableInvestors = [
+        {% for investor in available_investors %}
+        {id: "{{ investor.id }}", name: "{{ investor.name|escapejs }}"}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
     
-    function loadInvestorCommitments(investorId) {
-        // In a real implementation, this would be an AJAX call to get detailed commitments
-        investorCommitments.innerHTML = `
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> 
-                Historical commitment details would be loaded here via AJAX.
-                This would show all individual commitments with dates and amounts.
+    addButton.addEventListener('click', function() {
+        const newItem = document.createElement('div');
+        newItem.className = 'commitment-item mb-3 p-3 border rounded';
+        newItem.innerHTML = `
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label">Investor *</label>
+                    <select name="investors" class="form-control investor-select" required>
+                        <option value="">Select Investor</option>
+                        ${availableInvestors.map(inv => 
+                            `<option value="${inv.id}">${inv.name}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Amount ({{ fund.currency.symbol }}) *</label>
+                    <input type="number" name="amounts" class="form-control" 
+                           step="0.01" min="0.01" placeholder="Amount" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-sm btn-danger remove-item">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             </div>
         `;
-    }
+        commitmentItems.appendChild(newItem);
+        itemCount++;
+    });
     
-    // Set default date to today in modal
-    document.getElementById('modal-date').value = new Date().toISOString().split('T')[0];
+    commitmentItems.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-item')) {
+            const item = e.target.closest('.commitment-item');
+            if (document.querySelectorAll('.commitment-item').length > 1) {
+                item.remove();
+                itemCount--;
+            }
+        }
+    });
+    
+    // Form validation to prevent duplicate investors
+    document.getElementById('commitment-form').addEventListener('submit', function(e) {
+        const investorSelects = document.querySelectorAll('.investor-select');
+        const selectedInvestors = new Set();
+        let hasDuplicates = false;
+        let hasEmptyFields = false;
+        
+        // Check for duplicates and empty fields
+        investorSelects.forEach((select, index) => {
+            const value = select.value;
+            const amountInput = select.closest('.commitment-item').querySelector('input[name="amounts"]');
+            
+            if (!value) {
+                hasEmptyFields = true;
+                select.classList.add('is-invalid');
+            } else {
+                if (selectedInvestors.has(value)) {
+                    hasDuplicates = true;
+                    select.classList.add('is-invalid');
+                } else {
+                    selectedInvestors.add(value);
+                    select.classList.remove('is-invalid');
+                }
+            }
+            
+            if (!amountInput.value) {
+                hasEmptyFields = true;
+                amountInput.classList.add('is-invalid');
+            } else {
+                amountInput.classList.remove('is-invalid');
+            }
+        });
+        
+        // Check date field
+        const dateInput = document.getElementById('commitment-date');
+        if (!dateInput.value) {
+            hasEmptyFields = true;
+            dateInput.classList.add('is-invalid');
+        } else {
+            dateInput.classList.remove('is-invalid');
+        }
+        
+        if (hasDuplicates || hasEmptyFields) {
+            e.preventDefault();
+            if (hasDuplicates) {
+                alert('Please select different investors for each commitment.');
+            } else {
+                alert('Please fill in all required fields.');
+            }
+        }
+    });
 });
 </script>
+
+<style>
+.commitment-item {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+.commitment-item:hover {
+    background-color: #e9ecef;
+}
+
+.investor-select.is-invalid,
+input.is-invalid {
+    border-color: #dc3545;
+}
+
+.remove-item {
+    transition: opacity 0.2s;
+}
+
+.remove-item:hover {
+    opacity: 0.8;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.collapse.show {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+</style>
 {% endblock %}
