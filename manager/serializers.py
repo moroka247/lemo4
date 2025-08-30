@@ -121,3 +121,8 @@ class AllocationRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = AllocationRule
         fields = '__all__'
+
+class FundParameterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FundParameter
+        fields = '__all__'

@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.shortcuts import reverse
-from .choices import FeeFrequency, FeeBasis
+from .choices import FeeFrequency, FeeBasis, Month
 from django.db.models import Q
 
 class InvestorType(models.Model):
@@ -117,27 +117,99 @@ class Fund(models.Model):
     def get_absolute_url(self):
         return reverse('fund_detail', kwargs={'pk':self.pk})
 
+# manager/models.py
+from .choices import FeeFrequency, FeeBasis, Month
+
 class FundParameter(models.Model):
-    fund = models.ForeignKey(Fund, on_delete=models.CASCADE)
-    year_end = models.DateField(auto_now=False, null=True)
+    fund = models.OneToOneField(Fund, on_delete=models.CASCADE, related_name='parameters')
+    
+    # Fee Calculation Configuration
     fee_frequency = models.CharField(
         max_length=1,
         choices=FeeFrequency.choices,
-        null=True,
-        blank=True,
+        default=FeeFrequency.QUARTERLY
     )
     investment_period_fee_basis = models.CharField(
         max_length=1,
         choices=FeeBasis.choices,
-        null=True,
-        blank=True,
+        default=FeeBasis.COMMITTED_CAPITAL
     )
     divest_period_fee_basis = models.CharField(
         max_length=1,
         choices=FeeBasis.choices,
-        null=True,
-        blank=True,
+        default=FeeBasis.INVESTED_CAPITAL
     )
+    
+    # Fiscal Year Configuration
+    fiscal_year_end_month = models.CharField(
+        max_length=3,
+        choices=Month.choices,
+        default=Month.DECEMBER
+    )
+    
+    # Flexible Period End Configuration
+    period1_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period2_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period3_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period4_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period5_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period6_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period7_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period8_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period9_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period10_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period11_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    period12_end_month = models.CharField(max_length=3, choices=Month.choices, blank=True, null=True)
+    
+    investment_period_end_date = models.DateField()
+    
+    class Meta:
+        verbose_name = "Fund Parameter"
+        verbose_name_plural = "Fund Parameters"
+
+    def get_period_end_months(self):
+        """Return list of period end months based on frequency and configuration"""
+        # Get all non-empty custom period end months
+        custom_months = []
+        for i in range(1, 13):
+            field_name = f'period{i}_end_month'
+            month_value = getattr(self, field_name)
+            if month_value:
+                custom_months.append(month_value)
+        
+        # If custom months are defined, use them
+        if custom_months:
+            return custom_months
+        
+        # Default behavior based on frequency
+        if self.fee_frequency == FeeFrequency.ANNUALLY:
+            return [self.fiscal_year_end_month]
+        
+        elif self.fee_frequency == FeeFrequency.SEMI_ANNUALLY:
+            # Default: 6 months apart
+            month_num = Month.values.index(self.fiscal_year_end_month) + 1
+            mid_year_num = (month_num - 6) % 12 or 12
+            mid_year_month = Month.values[mid_year_num - 1]
+            return [mid_year_month, self.fiscal_year_end_month]
+        
+        elif self.fee_frequency == FeeFrequency.QUARTERLY:
+            # Default: standard quarters
+            month_num = Month.values.index(self.fiscal_year_end_month) + 1
+            q1_num = (month_num - 9) % 12 or 12
+            q2_num = (month_num - 6) % 12 or 12
+            q3_num = (month_num - 3) % 12 or 12
+            return [
+                Month.values[q1_num - 1],
+                Month.values[q2_num - 1], 
+                Month.values[q3_num - 1],
+                self.fiscal_year_end_month
+            ]
+        
+        elif self.fee_frequency == FeeFrequency.MONTHLY:
+            return list(Month.values)
+        
+        return []
+
 
 class FundClose(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
@@ -210,14 +282,30 @@ class NoticeNumber(models.Model):
         return str(self.number) + ' | ' + str(self.fund) + ' | ' + str(self.investor)
 
 class CommittedCapital(models.Model):
-    fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
-    investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
+    fund = models.ForeignKey(Fund,on_delete=models.CASCADE,null=False)
+    investor = models.ForeignKey(Investor,on_delete=models.CASCADE,null=False)
     amount = models.DecimalField(max_digits=12,decimal_places=2)
     date = models.DateField(auto_now=False)
     final_close = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.fund) + ' | ' + str(self.investor)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=~Q(investor__isnull=True),
+                name='investor_required'
+            )
+        ]
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=~Q(fund__isnull=True),
+                name='fund_required'
+            )
+        ]
 
 class Distribution(models.Model):
     notice_number = models.IntegerField(null=True)
@@ -234,6 +322,7 @@ class Distribution(models.Model):
 class CapitalCall(models.Model):
     notice_number = models.ForeignKey(NoticeNumber, on_delete=models.CASCADE, null=True, blank=True)
     date = models.DateField(auto_now=False, null=True)
+    due_date = models.DateField(null=True, blank=True) 
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
     call_type = models.ForeignKey(CallType,on_delete=models.CASCADE)
@@ -249,10 +338,33 @@ class CapitalCall(models.Model):
         ordering = ['-date', 'investor__name']
 
 class ManagementFees(models.Model):
-    fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
-    period_start = models.DateField(null=False)
-    period_end = models.DateField(null=False)
-    update_flag = models.BooleanField(null=False)
+    fund = models.ForeignKey(Fund, on_delete=models.CASCADE)
+    period_start_date = models.DateField()
+    period_end_date = models.DateField()
+    calculated_basis = models.DecimalField(max_digits=15, decimal_places=2)
+    basis_type = models.CharField(max_length=2, choices=FeeBasis.choices)
+    gross_fee_amount = models.DecimalField(max_digits=15, decimal_places=2)
+    applicable_fee_rate = models.DecimalField(max_digits=6, decimal_places=4)
+    capital_call = models.ForeignKey(
+        'CapitalCall', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='management_fees'
+    )
+    paid = models.BooleanField(default=False)
+    paid_date = models.DateField(null=True, blank=True)
+    prorated = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name_plural = "Management fees"
+        ordering = ['-period_end_date', 'fund']
+        unique_together = ['fund', 'period_start_date', 'period_end_date']
+    
+    def __str__(self):
+        return f"{self.fund.name} - {self.period_start_date} to {self.period_end_date} - ${self.gross_fee_amount:,.2f}"
 
 class Instrument(models.Model):
     name = models.CharField(max_length=255)
@@ -303,6 +415,17 @@ class Investment(models.Model):
 
     def get_absolute_url(self):
         return reverse('investment_detail', kwargs={'pk':self.pk})
+
+class Valuation(models.Model):
+    investment = models.ForeignKey(Investment, on_delete=models.CASCADE, related_name='valuations')
+    valuation_date = models.DateField()  # The "as of" date for this valuation
+    value = models.DecimalField(max_digits=16, decimal_places=2)  # The value on that date
+    # Optional but recommended:
+    note = models.TextField(blank=True)  # Source of valuation (e.g., "Board Update", "Portfolio Manager Estimate")
+    created_at = models.DateTimeField(auto_now_add=True)  # Audit trail
+
+    class Meta:
+        unique_together = ['investment', 'valuation_date']  # One valuation per investment per day
 
 class Disbursement(models.Model):
     date = models.DateField(auto_now=False, blank=False, null=False)

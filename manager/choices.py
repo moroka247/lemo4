@@ -11,3 +11,16 @@ class FeeBasis(models.TextChoices):
     INVESTED_CAPITAL = "I", "Invested-Capital"
     NET_ASSET_VALUE = "A", "Net-Asset-Value"
 
+class Month(models.TextChoices):
+    JANUARY = "Jan", "January"
+    FEBRUARY = "Feb", "February"
+    MARCH = "Mar", "March"
+    APRIL = "Apr", "April"
+    MAY = "May", "May"
+    JUNE = "Jun", "June"
+    JULY = "Jul", "July"
+    AUGUST = "Aug", "August"
+    SEPTEMBER = "Sep", "September"
+    OCTOBER = "Oct", "October"
+    NOVEMBER = "Nov", "November"
+    DECEMBER = "Dec", "December"

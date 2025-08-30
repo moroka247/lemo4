@@ -24,8 +24,8 @@
                 </div>
                 <div class="card-body">
                     <p><strong>Fund Name:</strong> {{ fund.name }}</p>
-                    <p><strong>Target Commitment:</strong> {{ fund.currency.symbol }}{{ target_commitment|floatformat:2 }}</p>
-                    <p><strong>Status:</strong> {{ fund.get_status_display }}</p>
+                    <p><strong>Fund Currency: </strong>{{ fund.currency }} </p>
+                    <p><strong>Target Commitment:</strong> {{ target_commitment|floatformat:2 }}</p>
                 </div>
             </div>
         </div>
@@ -89,7 +89,7 @@
                         <div class="row g-3 align-items-end">
                             <div class="col-md-6">
                                 <label class="form-label">Investor *</label>
-                                <select name="investors" class="form-control investor-select" required>
+                                    <select name="investors" class="form-control investor-select" required>
                                     <option value="">Select Investor</option>
                                     {% for investor in available_investors %}
                                     <option value="{{ investor.id }}">{{ investor.name }}</option>

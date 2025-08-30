@@ -75,15 +75,62 @@
             </button>
         </div>
         <div class="card-body collapse" id="capitalCallForm">
-            <form method="post">
+            <form method="post" id="capital-call-form">
                 {% csrf_token %}
                 
-                <!-- Date Selection -->
+                <!-- Date Selection - SINGLE DATE PICKER -->
                 <div class="row mb-4">
                     <div class="col-md-4">
-                        {{ date_form.date|as_crispy_field }}
+                        <label for="call_date" class="form-label">Call Date</label>
+                        <input type="date" name="call_date" class="form-control" required 
+                               value="{% now 'Y-m-d' %}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="due_date" class="form-label">Due Date</label>
+                        <input type="date" name="due_date" class="form-control" required 
+                               value="{% now 'Y-m-d' %}">
                     </div>
                 </div>
+
+                <!-- Unpaid Management Fees Section -->
+                {% if unpaid_management_fees %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">Include Management Fees</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Select</th>
+                                        <th>Period</th>
+                                        <th>Basis Type</th>
+                                        <th>Basis Amount</th>
+                                        <th>Fee Rate</th>
+                                        <th>Fee Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for fee in unpaid_management_fees %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" name="selected_management_fees" 
+                                                   value="{{ fee.id }}" class="form-check-input management-fee-checkbox">
+                                        </td>
+                                        <td>{{ fee.period_start_date|date:"M d, Y" }} - {{ fee.period_end_date|date:"M d, Y" }}</td>
+                                        <td>{{ fee.get_basis_type_display }}</td>
+                                        <td class="text-end">${{ fee.calculated_basis|floatformat:2 }}</td>
+                                        <td class="text-end">{{ fee.applicable_fee_rate|floatformat:4 }}</td>
+                                        <td class="text-end">${{ fee.gross_fee_amount|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 
                 <!-- Multiple Items Formset -->
                 <h6>Capital Call Items</h6>

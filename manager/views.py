@@ -33,9 +33,11 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils.dateparse import parse_date
 from .utils import xirr
+import calendar
+from .choices import FeeBasis
 
 # API Views
 class CurrencyViewSet(ModelViewSet):
@@ -138,6 +140,10 @@ class InvesotContactViewSet(ModelViewSet):
 class AllocationRuleViewSet(ModelViewSet):
     queryset = AllocationRule.objects.all()
     serializer_class = AllocationRuleSerializer
+
+class FundParameterViewSet(ModelViewSet):
+    queryset = FundParameter.objects.all()
+    serializer_class = FundParameterSerializer
 
 #HTML Template Views
 class HomePageView(TemplateView):
@@ -1021,7 +1027,7 @@ class CapitalCallView(TemplateView):
             if notice_code not in notice_calls:
                 notice_calls[notice_code] = {
                     'notice_number': call.notice_number,
-                    'descriptions': {},  # Changed from 'calls' to 'descriptions'
+                    'descriptions': {},
                     'total_amount': Decimal('0')
                 }
             
@@ -1033,7 +1039,7 @@ class CapitalCallView(TemplateView):
                     'description': call.description,
                     'call_type': call.call_type,
                     'allocation_rule': call.allocation_rule,
-                    'investor_amounts': {},  # Store amounts by investor
+                    'investor_amounts': {},
                     'total': Decimal('0')
                 }
             
@@ -1041,6 +1047,16 @@ class CapitalCallView(TemplateView):
             notice_calls[notice_code]['descriptions'][description_key]['investor_amounts'][call.investor.id] = call.amount
             notice_calls[notice_code]['descriptions'][description_key]['total'] += call.amount
             notice_calls[notice_code]['total_amount'] += call.amount
+        
+        # Get unpaid management fees
+        unpaid_management_fees = ManagementFees.objects.filter(
+            fund=fund,
+            paid=False,
+            capital_call__isnull=True
+        ).order_by('period_end_date')
+        
+        # Get management fee types for the form
+        management_fee_call_type = CallType.objects.filter(name__icontains='management').first()
         
         # Forms and other context
         context['date_form'] = CapitalCallDateForm()
@@ -1055,32 +1071,69 @@ class CapitalCallView(TemplateView):
             'total_committed': total_committed,
             'total_drawn': total_drawn,
             'total_undrawn': total_committed - total_drawn,
+            'unpaid_management_fees': unpaid_management_fees,
+            'management_fee_call_type': management_fee_call_type,
         })
         
         return context
-
     
     def post(self, request, *args, **kwargs):
         fund = get_object_or_404(Fund, pk=self.kwargs['pk'])
         
-        # Handle forms
-        date_form = CapitalCallDateForm(request.POST)
+        # Handle integrated capital call form
         item_formset = CapitalCallItemFormSet(
             request.POST, 
             prefix='capital_call_items'
         )
         
-        if date_form.is_valid() and item_formset.is_valid():
-            date = date_form.cleaned_data['date']
+        if item_formset.is_valid():
+            call_date_str = request.POST.get('call_date')
+            due_date_str = request.POST.get('due_date')
+            
+            if not call_date_str or not due_date_str:
+                messages.error(request, 'Please provide both call date and due date.')
+                context = self.get_context_data()
+                context['item_formset'] = item_formset
+                return self.render_to_response(context)
+            
+            call_date = datetime.strptime(call_date_str, '%Y-%m-%d').date()
+            due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
             
             # Create a notice for this batch
             notice = NoticeNumber.objects.create(
-                date=date,
+                date=call_date,
                 fund=fund,
                 investor=None  # Batch notice
             )
             
-            # Process each item in the formset
+            # Process management fees if any are selected
+            selected_fee_ids = request.POST.getlist('selected_management_fees')
+            total_management_fees = Decimal('0')
+            management_fee_capital_calls = []  # Store created capital calls for management fees
+            
+            for fee_id in selected_fee_ids:
+                try:
+                    management_fee = ManagementFees.objects.get(
+                        id=fee_id,
+                        fund=fund,
+                        paid=False,
+                        capital_call__isnull=True
+                    )
+                    
+                    # Create capital calls for management fee and get the created capital calls
+                    created_calls = self.create_management_fee_capital_call(fund, management_fee, notice, due_date)
+                    
+                    if created_calls:
+                        # Link the management fee to the first capital call (they all reference the same fee)
+                        management_fee.capital_call = created_calls[0]  # Link to first capital call
+                        management_fee.save()
+                        total_management_fees += management_fee.gross_fee_amount
+                        management_fee_capital_calls.extend(created_calls)
+                    
+                except ManagementFees.DoesNotExist:
+                    continue
+            
+            # Process regular capital call items
             for form in item_formset:
                 if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
                     call_type = form.cleaned_data['call_type']
@@ -1097,7 +1150,7 @@ class CapitalCallView(TemplateView):
                     # Get drawn amounts before this date
                     drawn_before = CapitalCall.objects.filter(
                         fund=fund, 
-                        date__lt=date
+                        date__lt=call_date
                     ).values('investor').annotate(
                         total_drawn=Sum('amount')
                     )
@@ -1125,22 +1178,82 @@ class CapitalCallView(TemplateView):
                                 notice_number=notice,
                                 fund=fund,
                                 investor=investor,
-                                date=date,
+                                date=call_date,
+                                due_date=due_date,
                                 call_type=call_type,
                                 allocation_rule=allocation_rule,
                                 description=description,
                                 amount=investor_share
                             )
             
-            messages.success(request, f'Capital call batch {notice.notice_code} created successfully!')
+            # Success message
+            if total_management_fees > 0:
+                messages.success(
+                    request, 
+                    f'Capital call batch {notice.notice_code} created successfully! '
+                    f'Including ${total_management_fees:,.2f} in management fees.'
+                )
+            else:
+                messages.success(request, f'Capital call batch {notice.notice_code} created successfully!')
+            
             return redirect('capital_call', pk=fund.pk)
         
         # If forms are invalid
         messages.error(request, 'Please correct the errors below.')
         context = self.get_context_data()
-        context['date_form'] = date_form
         context['item_formset'] = item_formset
         return self.render_to_response(context)
+
+    def create_management_fee_capital_call(self, fund, management_fee, notice, due_date):
+        """Create capital calls for a management fee across all investors and return the created calls"""
+        # Get management fee call type
+        management_call_type = CallType.objects.filter(name__icontains='management').first()
+        if not management_call_type:
+            management_call_type = CallType.objects.create(
+                name='Management Fee',
+                description='Regular management fee charge'
+            )
+        
+        # Get allocation rule (typically Committed Capital for management fees)
+        allocation_rule = AllocationRule.objects.filter(name='Committed Capital').first()
+        if not allocation_rule:
+            allocation_rule = AllocationRule.objects.create(
+                name='Committed Capital',
+                description='Allocation based on committed capital percentage'
+            )
+        
+        # Get total commitments for the fund
+        total_committed = CommittedCapital.objects.filter(fund=fund).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0')
+        
+        if total_committed == 0:
+            return []
+        
+        created_calls = []
+        
+        # Create capital calls for each investor
+        investor_commitments = CommittedCapital.objects.filter(fund=fund)
+        for commitment in investor_commitments:
+            investor = commitment.investor
+            investor_share = (commitment.amount / total_committed) * management_fee.gross_fee_amount
+            
+            if investor_share > 0:
+                capital_call = CapitalCall.objects.create(
+                    notice_number=notice,
+                    fund=fund,
+                    investor=investor,
+                    date=notice.date,
+                    due_date=due_date,
+                    call_type=management_call_type,
+                    allocation_rule=allocation_rule,
+                    description=f"Management Fee {management_fee.period_start_date} to {management_fee.period_end_date}",
+                    amount=investor_share
+                )
+                created_calls.append(capital_call)
+        
+        return created_calls
+
 
 class FormSuccessView(TemplateView):
     template_name = 'form_success.html'

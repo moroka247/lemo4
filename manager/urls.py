@@ -31,6 +31,7 @@ router.register('instrument', views.InstrumentViewSet, basename='instrument')
 router.register('net-asset-value', views.NetAssetValueViewSet, basename='net-asset-value')
 router.register('investor-contact', views.InvesotContactViewSet, basename='investor-contact')
 router.register('allocation-rule', views.AllocationRuleViewSet, basename='allocation-rule')
+router.register('fund-parameters', views.FundParameterViewSet, basename='fund-parameters')
 
 #investors_router = routers.NestedDefaultRouter(router, 'investors', lookup='investors_pk')
 #investors_router.register('contacts',views.ContactViewSet, basename='investor-contacts')
