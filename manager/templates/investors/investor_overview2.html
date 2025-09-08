@@ -1,0 +1,766 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+
+{% block title %}
+{{ investor.name }} - Investor Dashboard
+{% endblock title %}
+
+{% block content %}
+
+<div class="investor-dashboard">
+
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'investors' %}">Investors</a></li>
+            <li class="breadcrumb-item active">{{ investor.name }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="dashboard-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-0">{{ investor.name }}</h2>
+                <p class="text-muted mb-0">
+                    <strong>{{ investor.category }} • {{ investor.reg_no }}</strong>
+                </p>
+            </div>
+            <div class="investor-status-badge">
+                <span class="badge bg-success">Active</span>
+            </div>
+        </div>
+        <hr class="mt-3">
+    </div>
+
+    <!-- Key Metrics Cards - Simplified to avoid missing context errors -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card border-start-lg border-start-primary">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Total Commitments</h6>
+                            <h4 class="mb-0">R{% if total_commitments %}{{ total_commitments|floatformat:2 }}{% else %}0.00{% endif %}</h4>
+                        </div>
+                        <div class="metric-icon bg-primary">
+                            <i class="fas fa-file-contract"></i>
+                        </div>
+                    </div>
+                    <div class="metric-progress mt-3">
+                        <div class="progress">
+                            <div class="progress-bar bg-primary" role="progressbar" 
+                                 style="width: 0%" 
+                                 aria-valuenow="0" 
+                                 aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="text-muted">0% called</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card border-start-lg border-start-success">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Called Capital</h6>
+                            <h4 class="mb-0">R{{ called_capital|floatformat:2 }}</h4>
+                        </div>
+                        <div class="metric-icon bg-success">
+                            <i class="fas fa-hand-holding-usd"></i>
+                        </div>
+                    </div>
+                    <div class="metric-delta mt-3">
+                        <span class="badge bg-info">{{ fund_count }} Funds</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card border-start-lg border-start-info">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Distributions Received</h6>
+                            <h4 class="mb-0">R{{ distributions_received|floatformat:2 }}</h4>
+                        </div>
+                        <div class="metric-icon bg-info">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                    </div>
+                    <div class="metric-delta mt-3">
+                        {% if distributions_received > 0 and called_capital > 0 %}
+                            <span class="badge bg-success">{{ distributions_received|divide:called_capital|floatformat:2 }}x Return</span>
+                        {% else %}
+                            <span class="badge bg-secondary">No distributions</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card border-start-lg border-start-warning">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted mb-1">Net Cash Flow</h6>
+                            <h4 class="mb-0">R{{ net_cash_flow|floatformat:2 }}</h4>
+                        </div>
+                        <div class="metric-icon bg-warning">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="metric-delta mt-3">
+                        <span class="badge bg-{% if net_cash_flow >= 0 %}success{% else %}danger{% endif %}">
+                            {% if net_cash_flow >= 0 %}+{% endif %}{{ net_cash_flow|floatformat:2 }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-xl-8 col-lg-7">
+            <div class="card card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">Cash Flow History</h5>
+                    <div class="card-tools">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary">Monthly</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary active">Quarterly</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary">Yearly</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="cashFlowChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-4 col-lg-5">
+            <div class="card card-chart">
+                <div class="card-header">
+                    <h5 class="card-title">Commitment Allocation</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="commitmentAllocationChart" height="300"></canvas>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="#funds" class="btn btn-sm btn-outline-primary w-100">View Fund Commitments</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs mt-4" id="investorTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab" aria-controls="details" aria-selected="true">
+                <i class="fas fa-info-circle me-1"></i>Investor Details
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="funds-tab" data-bs-toggle="tab" data-bs-target="#funds" type="button" role="tab" aria-controls="funds" aria-selected="false">
+                <i class="fas fa-piggy-bank me-1"></i>Fund Commitments
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="cashflows-tab" data-bs-toggle="tab" data-bs-target="#cash_flows" type="button" role="tab" aria-controls="cash_flows" aria-selected="false">
+                <i class="fas fa-exchange-alt me-1"></i>Cash Flows
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="notices-tab" data-bs-toggle="tab" data-bs-target="#notices" type="button" role="tab" aria-controls="notices" aria-selected="false">
+                <i class="fas fa-bell me-1"></i>Notices
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="contacts-tab" data-bs-toggle="tab" data-bs-target="#mailing_lists" type="button" role="tab" aria-controls="mailing_lists" aria-selected="false">
+                <i class="fas fa-users me-1"></i>Contacts
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab" aria-controls="documents" aria-selected="false">
+                <i class="fas fa-file-alt me-1"></i>Documents
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content mt-3" id="investorTabContent">
+
+        <!-- Investor Details Tab -->
+        <div class="tab-pane fade show active" id="details" role="tabpanel" aria-labelledby="details-tab">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <th width="40%">Full Name</th>
+                                    <td>{{ investor.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Short Name</th>
+                                    <td>{{ investor.short_name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Investor Category</th>
+                                    <td>{{ investor.category }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Registration Number</th>
+                                    <td>{{ investor.reg_no }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <th width="40%">Business Address</th>
+                                    <td>
+                                        {{ investor.address }}<br>
+                                        {{ investor.city }}<br>
+                                        {{ investor.post_code }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Primary Contact</th>
+                                    <td>{{ primary_contact.name|default:"" }} {{ primary_contact.surname }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Contact Phone</th>
+                                    <td>{{ primary_contact.phone_number|default:"N/A" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Email Address</th>
+                                    <td>{{ primary_contact.email_address|default:"N/A" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fund Commitments Tab -->
+        <div class="tab-pane fade" id="funds" role="tabpanel" aria-labelledby="funds-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Fund Commitments</h5>
+                </div>
+                <div class="card-body">
+                    {% if fund_commitments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Fund</th>
+                                    <th class="text-end">Commitment</th>
+                                    <th class="text-end">Called</th>
+                                    <th class="text-center">% Called</th>
+                                    <th class="text-end">Distributions</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for commitment in fund_commitments %}
+                                <tr>
+                                    <td><strong>{{ commitment.fund.name }}</strong></td>
+                                    <td class="text-end">R{{ commitment.committed_amount|floatformat:2 }}</td>
+                                    <td class="text-end">R{{ commitment.called_amount|floatformat:2 }}</td>
+                                    <td class="text-center">
+                                        {% if commitment.committed_amount > 0 %}
+                                            {% with percentage=commitment.called_amount|divide:commitment.committed_amount|multiply:100 %}
+                                            <span class="badge bg-{% if percentage < 50 %}info{% else %}warning{% endif %}">
+                                                {{ percentage|floatformat:1 }}%
+                                            </span>
+                                            {% endwith %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">0%</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">R{{ commitment.distributions|floatformat:2 }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-{% if commitment.fund.status == 'Active' %}success{% else %}secondary{% endif %}">
+                                            {{ commitment.fund.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-active">
+                                    <th>Total</th>
+                                    <th class="text-end">R{{ total_commitments|floatformat:2 }}</th>
+                                    <th class="text-end">R{{ called_capital|floatformat:2 }}</th>
+                                    <th class="text-center">
+                                        {% if total_commitments > 0 %}
+                                            {{ called_capital|divide:total_commitments|multiply:100|floatformat:1 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </th>
+                                    <th class="text-end">R{{ distributions_received|floatformat:2 }}</th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-piggy-bank fa-2x mb-2"></i>
+                        <p>No fund commitments found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Cash Flows Tab -->
+        <div class="tab-pane fade" id="cash_flows" role="tabpanel" aria-labelledby="cashflows-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Investor Cash Flows</h5>
+                </div>
+                <div class="card-body">
+                    {% if cash_flows %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Fund</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Amount</th>
+                                    <th>Description</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cash_flow in cash_flows|slice:":10" %}
+                                <tr>
+                                    <td>{{ cash_flow.date|date:"M d, Y" }}</td>
+                                    <td>{{ cash_flow.fund.name }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if cash_flow.flow_type == 'Distribution' %}success{% else %}primary{% endif %}">
+                                            {{ cash_flow.flow_type }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">R{{ cash_flow.amount|floatformat:2 }}</td>
+                                    <td>{{ cash_flow.description|default:"-" }}</td>
+                                    <td class="text-end">
+                                        <a href="#" class="btn btn-sm btn-outline-secondary me-1">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-exchange-alt fa-2x mb-2"></i>
+                        <p>No cash flow records found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Notices Tab -->
+        <div class="tab-pane fade" id="notices" role="tabpanel" aria-labelledby="notices-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Notices</h5>
+                </div>
+                <div class="card-body">
+                    {% if notices %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Fund Name</th>
+                                    <th>Notice Type</th>
+                                    <th>Date</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for notice in notices %}
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td class="text-end">
+                                        <a href="{{ file.inv_file.url }}" class="btn btn-sm btn-outline-success me-1" target="_blank">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-warning me-1">
+                                            <i class="fas fa-edit"></i> Update
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash-alt"></i> Delete
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-file-alt fa-2x mb-2"></i>
+                        <p>No notices found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Contacts Tab -->
+        <div class="tab-pane fade" id="mailing_lists" role="tabpanel" aria-labelledby="contacts-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Investor Contacts</h5>
+                    <div class="card-tools">
+                        <a href="#" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus me-1"></i>Add Contact
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if investor_contacts %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Contact Name</th>
+                                    <th>Phone Number</th>
+                                    <th>Email Address</th>
+                                    <th class="text-center">Main Contact</th>
+                                    <th class="text-center">Advisory Board</th>
+                                    <th class="text-center">IC Member</th>
+                                    <th class="text-center">Reports</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for investor_contact in investor_contacts %}
+                                <tr>
+                                    <td>{{ investor_contact.contact.name }} {{ investor_contact.contact.surname }}</td>
+                                    <td>{{ investor_contact.contact.phone_number }}</td>
+                                    <td>{{ investor_contact.contact.email_address }}</td>
+                                    <td class="text-center">
+                                        <i class="fas fa-{% if investor_contact.primary_contact %}check text-success{% else %}times text-muted{% endif %}"></i>
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas fa-{% if investor_contact.adv_board_rep %}check text-success{% else %}times text-muted{% endif %}"></i>
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas fa-{% if investor_contact.invest_comm_rep %}check text-success{% else %}times text-muted{% endif %}"></i>
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="fas fa-{% if investor_contact.reports %}check text-success{% else %}times text-muted{% endif %}"></i>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'contact_link_edit' pk=investor_contact.contact.pk link_pk=investor_contact.pk %}" 
+                                           class="btn btn-sm btn-outline-warning me-1">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'contact_link_delete' pk=investor_contact.contact.pk link_pk=investor_contact.pk %}" 
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('Are you sure you want to remove this contact link?');">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-users fa-2x mb-2"></i>
+                        <p>No contacts found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents Tab -->
+        <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Investor Documents</h5>
+                    <div class="card-tools">
+                        <a href="#" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus me-1"></i>Add Document
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if files %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Document Description</th>
+                                    <th>Type</th>
+                                    <th>Upload Date</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for file in files %}
+                                <tr>
+                                    <td>{{ file.description }}</td>
+                                    <td><span class="badge bg-info">{{ file.document_type }}</span></td>
+                                    <td>{{ file.upload_date|date:"M d, Y" }}</td>
+                                    <td class="text-end">
+                                        <a href="{{ file.inv_file.url }}" class="btn btn-sm btn-outline-success me-1" target="_blank">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-warning me-1">
+                                            <i class="fas fa-edit"></i> Update
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash-alt"></i> Delete
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-file-alt fa-2x mb-2"></i>
+                        <p>No documents found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Load Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Cash Flow Chart
+    var ctx1 = document.getElementById('cashFlowChart');
+    if (ctx1) {
+        var cashFlowChart = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                datasets: [
+                    {
+                        label: 'Capital Calls',
+                        data: [120, 150, 180, 200],
+                        backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                    },
+                    {
+                        label: 'Distributions',
+                        data: [80, 120, 160, 220],
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Amount (R)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Commitment Allocation Chart
+    var ctx2 = document.getElementById('commitmentAllocationChart');
+    if (ctx2) {
+        var commitmentAllocationChart = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['Fund A', 'Fund B', 'Fund C'],
+                datasets: [{
+                    data: [40, 35, 25],
+                    backgroundColor: [
+                        'rgba(0, 123, 255, 0.8)',
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(255, 193, 7, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(0, 123, 255, 1)',
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(255, 193, 7, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
+
+    // Tab functionality
+    const triggerTabList = document.querySelectorAll('#investorTabs button')
+    triggerTabList.forEach(triggerEl => {
+        new bootstrap.Tab(triggerEl)
+    })
+});
+</script>
+
+<style>
+.investor-dashboard {
+    padding: 20px 0;
+}
+
+.dashboard-header {
+    background: linear-gradient(120deg, #f8f9fa 0%, #fff 100%);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.metric-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transition: transform 0.3s;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+.border-start-lg {
+    border-left-width: 4px !important;
+}
+
+.border-start-primary {
+    border-left-color: #4e73df !important;
+}
+
+.border-start-success {
+    border-left-color: #1cc88a !important;
+}
+
+.border-start-info {
+    border-left-color: #36b9cc !important;
+}
+
+.border-start-warning {
+    border-left-color: #f6c23e !important;
+}
+
+.metric-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.card-chart {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.card-chart .card-header {
+    background: transparent;
+    border-bottom: 1px solid #eaecf4;
+    padding: 20px 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.card-chart .card-body {
+    padding: 20px;
+}
+
+.card-title {
+    font-weight: 600;
+    color: #5a5c69;
+    margin-bottom: 0;
+}
+
+.nav-tabs .nav-link {
+    font-weight: 500;
+    color: #5a5c69;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 12px 20px;
+}
+
+.nav-tabs .nav-link.active {
+    color: #4e73df;
+    border-bottom: 3px solid #4e73df;
+    background: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: #e3e6f0;
+    isolation: isolate;
+}
+
+.table th {
+    font-weight: 600;
+    color: #5a5c69;
+    border-top: none;
+}
+
+.progress {
+    height: 8px;
+    border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+    .metric-icon {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+}
+</style>
+
+{% endblock content %}

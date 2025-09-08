@@ -1,0 +1,199 @@
+<!-- templates/funds/fund_parameter_form.html -->
+{% extends "base.html" %}
+{% load static crispy_forms_tags %}
+{% load custom_filters %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>
+                <i class="fas fa-cog me-2"></i>
+                {% if is_create %}Create{% else %}Edit{% endif %} Fund Parameters: {% if not is_create %}{{ object.fund.name }}{% endif %}
+            </h2>
+            <p class="text-muted">Configure how management fees are calculated for this fund</p>
+        </div>
+    </div>
+
+    <!-- DEBUG: Show all available fields -->
+    <div class="row mb-3" style="display: none;">
+        <div class="col">
+            <h6>Available Form Fields:</h6>
+            <ul>
+                {% for field in form %}
+                    <li>{{ field.name }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Fee Calculation Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if is_create %}
+                        <div class="row">
+                            <div class="col-md-12">
+                                {{ form.fund|as_crispy_field }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Test each field individually to find the problematic one -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                {% if form.fee_frequency %}
+                                    {{ form.fee_frequency|as_crispy_field }}
+                                {% else %}
+                                    <p class="text-danger">fee_frequency field not found</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                {% if form.fiscal_year_end_month %}
+                                    {{ form.fiscal_year_end_month|as_crispy_field }}
+                                {% else %}
+                                    <p class="text-danger">fiscal_year_end_month field not found</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                {% if form.investment_period_fee_basis %}
+                                    {{ form.investment_period_fee_basis|as_crispy_field }}
+                                {% else %}
+                                    <p class="text-danger">investment_period_fee_basis field not found</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                {% if form.divest_period_fee_basis %}
+                                    {{ form.divest_period_fee_basis|as_crispy_field }}
+                                {% else %}
+                                    <p class="text-danger">divest_period_fee_basis field not found</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if form.investment_period_end_date %}
+                            {{ form.investment_period_end_date|as_crispy_field }}
+                        {% else %}
+                            <p class="text-danger">investment_period_end_date field not found</p>
+                        {% endif %}
+
+                        <!-- Temporarily comment out the custom period section -->
+                        {% comment %}
+                        <h6 class="mt-4 mb-3">Custom Period End Months</h6>
+                        <p class="text-muted small">
+                            Configure custom period end months for non-standard fee schedules.
+                            Leave blank to use default periods based on frequency.
+                        </p>
+
+                        <div class="row">
+                            {% for i in "1234" %}
+                            <div class="col-md-3">
+                                {% with field_name="period"|add:i|add:"_end_month" %}
+                                    {% with field=form|get_field:field_name %}
+                                        {% if field %}
+                                            {{ field|as_crispy_field }}
+                                        {% else %}
+                                            <p class="text-danger small">Field {{ field_name }} not found</p>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% endwith %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endcomment %}
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> {% if is_create %}Create{% else %}Save{% endif %} Parameters
+                            </button>
+                            <a href="{% url 'fund_parameter_list' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Help & Guidance</h6>
+                </div>
+                <div class="card-body">
+                    <h6>Fee Frequency</h6>
+                    <p class="small text-muted">
+                        How often management fees are calculated and charged.
+                    </p>
+
+                    <h6>Fee Basis</h6>
+                    <p class="small text-muted">
+                        <strong>Investment Period:</strong> {% if not is_create %}{{ object.get_investment_period_fee_basis_display }}{% else %}Based on committed capital during investment period{% endif %}<br>
+                        <strong>Divestment Period:</strong> {% if not is_create %}{{ object.get_divest_period_fee_basis_display }}{% else %}Based on net invested capital after investment period{% endif %}
+                    </p>
+
+                    {% comment %}
+                    <h6>Custom Periods</h6>
+                    <p class="small text-muted">
+                        Use for non-standard quarter ends (e.g., Jan, Apr, Jul, Oct).
+                        Only the first 4 periods are used for quarterly frequency.
+                    </p>
+                    {% endcomment %}
+                    
+                    {% if is_create %}
+                    <h6>Creating New Parameters</h6>
+                    <p class="small text-muted">
+                        Select a fund that doesn't already have parameters configured.
+                        Each fund can only have one set of parameters.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Show/hide custom period fields based on frequency
+if (document.getElementById('id_fee_frequency')) {
+    document.getElementById('id_fee_frequency').addEventListener('change', function() {
+        const frequency = this.value;
+        
+        // Show/hide period fields
+        for (let i = 1; i <= 4; i++) {
+            const field = document.getElementById(`id_period${i}_end_month`);
+            if (field) {
+                const formGroup = field.closest('.form-group');
+                
+                if (frequency === 'M') { // Monthly - show all
+                    formGroup.style.display = 'block';
+                } else if (frequency === 'Q' && i <= 4) { // Quarterly - show 4
+                    formGroup.style.display = 'block';
+                } else if (frequency === 'S' && i <= 2) { // Semi-annual - show 2
+                    formGroup.style.display = 'block';
+                } else if (frequency === 'A' && i <= 1) { // Annual - show 1
+                    formGroup.style.display = 'block';
+                } else {
+                    formGroup.style.display = 'none';
+                }
+            }
+        }
+    });
+
+    // Trigger change on page load
+    document.getElementById('id_fee_frequency').dispatchEvent(new Event('change'));
+}
+</script>
+{% endblock %}

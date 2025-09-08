@@ -1,0 +1,203 @@
+<!-- templates/funds/calculate_management_fees.html -->
+{% extends "base.html" %}
+{% load custom_filters %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="fas fa-calculator me-2"></i>Calculate Management Fees</h2>
+            <p class="text-muted">Calculate management fees for all configured funds</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Fee Calculation</h5>
+                </div>
+
+                {% if not funds %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No funds found. Please <a href="{% url 'fund_parameter_create' %}">create fund parameters</a> first.
+                </div>
+                {% endif %}
+
+                <div class="card-body">
+                    <form id="calculationForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="calculationDate" class="form-label">Calculation Date</label>
+                                <input type="date" class="form-control" id="calculationDate" 
+                                       value="{{ today|date:'Y-m-d' }}">
+                                <div class="form-text">Typically the last day of the fee period</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="fundSelect" class="form-label">Fund (Optional)</label>
+                                <select class="form-select" id="fundSelect">
+                                    <option value="">All Funds</option>
+                                    {% for fund in funds %}
+                                    <option value="{{ fund.id }}">{{ fund.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Calculate for specific fund or all funds</div>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="forceCalculation">
+                            <label class="form-check-label" for="forceCalculation">
+                                Force recalculation (overwrite existing periods)
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="calculateBtn">
+                            <i class="fas fa-calculator me-1"></i> Calculate Fees
+                        </button>
+                    </form>
+
+                    <div id="calculationResults" class="mt-4" style="display: none;">
+                        <h6>Calculation Results</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="resultsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Fund</th>
+                                        <th>Status</th>
+                                        <th>Amount</th>
+                                        <th>Period</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">Recent Fee Calculations</h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_fees %}
+                    <div class="list-group list-group-flush">
+                        {% for fee in recent_fees %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <strong>{{ fee.fund.name }}</strong>
+                                <span class="badge bg-{% if fee.paid %}success{% else %}warning{% endif %}">
+                                    {{ fee.gross_fee_amount|floatformat:2 }}
+                                </span>
+                            </div>
+                            <small class="text-muted">
+                                {{ fee.period_start_date }} to {{ fee.period_end_date }}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No recent fee calculations</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#calculationForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const calculationDate = $('#calculationDate').val();
+        const fundId = $('#fundSelect').val();
+        const force = $('#forceCalculation').is(':checked');
+        
+        $('#calculateBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Calculating...');
+        
+        $.ajax({
+            url: '{% url "calculate_management_fees" %}',
+            method: 'POST',
+            data: {
+                'calculation_date': calculationDate,
+                'fund_id': fundId,
+                'force': force,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    displayResults(response.results);
+                } else {
+                    alert('Error: ' + response.error);
+                }
+            },
+            error: function() {
+                alert('An error occurred during calculation.');
+            },
+            complete: function() {
+                $('#calculateBtn').prop('disabled', false).html('<i class="fas fa-calculator me-1"></i> Calculate Fees');
+            }
+        });
+    });
+    
+    function displayResults(results) {
+        const tbody = $('#resultsTable tbody');
+        tbody.empty();
+        
+        results.forEach(result => {
+            let rowClass = '';
+            let statusBadge = '';
+            let amount = '';
+            let period = '';
+            let details = '';
+            
+            switch(result.status) {
+                case 'success':
+                    rowClass = 'table-success';
+                    statusBadge = '<span class="badge bg-success">Success</span>';
+                    amount = '$' + result.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    period = result.period_start + ' to ' + result.period_end;
+                    details = result.basis;
+                    break;
+                case 'skipped':
+                    rowClass = 'table-warning';
+                    statusBadge = '<span class="badge bg-warning">Skipped</span>';
+                    details = result.reason;
+                    break;
+                case 'failed':
+                    rowClass = 'table-danger';
+                    statusBadge = '<span class="badge bg-danger">Failed</span>';
+                    details = result.reason;
+                    break;
+                case 'error':
+                    rowClass = 'table-danger';
+                    statusBadge = '<span class="badge bg-danger">Error</span>';
+                    details = result.reason;
+                    break;
+            }
+            
+            tbody.append(`
+                <tr class="${rowClass}">
+                    <td>${result.fund}</td>
+                    <td>${statusBadge}</td>
+                    <td>${amount}</td>
+                    <td>${period}</td>
+                    <td>${details}</td>
+                </tr>
+            `);
+        });
+        
+        $('#calculationResults').show();
+    }
+});
+</script>
+{% endblock %}

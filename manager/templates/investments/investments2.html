@@ -2,22 +2,22 @@
 {% load custom_filters %}
 
 {% block title %}
-Investors Dashboard
+Investments Dashboard
 {% endblock title %}
 
 {% block content %}
 
-<div class="container-fluid investors-dashboard">
+<div class="container-fluid investments-dashboard">
     <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h2 class="mb-1">Investors</h2>
-                    <p class="text-muted mb-0">Manage and monitor your investors</p>
+                    <h2 class="mb-1">Investment Portfolio</h2>
+                    <p class="text-muted mb-0">Manage and monitor your investment deals</p>
                 </div>
-                <a class="btn btn-primary" href="{% url 'add_investor' %}">
-                    <i class="fas fa-plus me-2"></i>Add New Investor
+                <a class="btn btn-primary" href="{% url 'add_investment' %}">
+                    <i class="fas fa-plus me-2"></i>Add New Deal
                 </a>
             </div>
             <hr class="mt-3">
@@ -40,7 +40,7 @@ Investors Dashboard
                                         type="text" 
                                         name="q" 
                                         class="form-control border-start-0" 
-                                        placeholder="Search investors by name..." 
+                                        placeholder="Search investments by company or fund..." 
                                         value="{{ search_query }}"
                                     >
                                     <button type="submit" class="btn btn-primary">Search</button>
@@ -49,8 +49,9 @@ Investors Dashboard
                         </div>
                         <div class="col-md-4 text-md-end mt-3 mt-md-0">
                             <div class="btn-group">
-                                <button type="button" class="btn btn-outline-secondary active">All Investors</button>
-                                <!-- Removed active/inactive buttons since Investor model doesn't have is_active field -->
+                                <button type="button" class="btn btn-outline-secondary active">All Deals</button>
+                                <button type="button" class="btn btn-outline-secondary">Performing</button>
+                                <button type="button" class="btn btn-outline-secondary">Underperforming</button>
                             </div>
                         </div>
                     </div>
@@ -59,105 +60,80 @@ Investors Dashboard
         </div>
     </div>
 
-    <!-- Investors Grid -->
+    <!-- Investments Grid -->
     <div class="row">
-        {% if investors_data %}
-            {% for investor_data in investors_data %}
+        {% if investments %}
+            {% for investment in investments %}
             <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
-                <div class="card investor-card h-100">
+                <div class="card investment-card h-100">
                     <div class="card-header position-relative">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">{{ investor_data.investor.name }}</h5>
-                            <!-- Removed active/inactive badge -->
+                            <h5 class="card-title mb-0">{{ investment.company }}</h5>
+                            <span class="badge bg-success">Performing</span>
                         </div>
-                        <div class="investor-logo-placeholder">
-                            <i class="fas fa-user-tie"></i>
+                        <div class="investment-logo-placeholder">
+                            {{ investment.company.name|first|upper }}
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="investor-short-name text-muted mb-3">
-                            • {{ investor_data.investor.category }}
+                        <div class="investment-fund text-muted mb-3">
+                            {{ investment.fund }} • {{ investment.instrument }}
                         </div>
                         
-                        <div class="investor-contact-info mb-4">
-                            {% if investor_data.primary_contact %}
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-user me-2 text-muted"></i>
-                                <span>{{ investor_data.primary_contact.name }} {{ investor_data.primary_contact.surname }}</span>
-                            </div>
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-envelope me-2 text-muted"></i>
-                                <span>{{ investor_data.primary_contact.email_address }}</span>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-phone me-2 text-muted"></i>
-                                <span>{{ investor_data.primary_contact.phone_number }}</span>
-                            </div>
-                            {% else %}
-                            <div class="text-muted">
-                                <i class="fas fa-exclamation-circle me-1"></i> No primary contact assigned
-                            </div>
-                            {% endif %}
-                        </div>
-                    <!--
                         <div class="row mb-3">
                             <div class="col-6">
-                                <div class="investor-metric">
-                                    <div class="metric-label">Total Committed</div>
-                                    <div class="metric-value">{{ investor_data.total_committed|floatformat:2|default:"0.00" }}</div>
+                                <div class="investment-metric">
+                                    <div class="metric-label">Committed</div>
+                                    <div class="metric-value">${{ investment.committed_amount|floatformat:2 }}</div>
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="investor-metric">
-                                    <div class="metric-label">Total Called</div>
-                                    <div class="metric-value">{{ investor_data.total_called|floatformat:2|default:"0.00" }}</div>
+                                <div class="investment-metric">
+                                    <div class="metric-label">Invested</div>
+                                    <div class="metric-value">${{ investment.invested_amount|floatformat:2 }}</div>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="progress mb-3" style="height: 8px;">
-                            <div class="progress-bar bg-info" role="progressbar" 
-                                 style="width: {% if investor_data.total_committed > 0 %}{% widthratio investor_data.total_called investor_data.total_committed 100 %}%{% else %}0%{% endif %}" 
-                                 aria-valuenow="{% if investor_data.total_committed > 0 %}{% widthratio investor_data.total_called investor_data.total_committed 100 %}{% else %}0{% endif %}" 
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {% widthratio investment.invested_amount investment.committed_amount 100 %}%" 
+                                 aria-valuenow="{% widthratio investment.invested_amount investment.committed_amount 100 %}" 
                                  aria-valuemin="0" aria-valuemax="100">
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-6">
-                                <div class="investor-metric">
-                                    <div class="metric-label">Funds Invested</div>
-                                    <div class="metric-value">
-                                        {{ investor_data.funds_count|default:0 }}
-                                    </div>
+                                <div class="investment-metric">
+                                    <div class="metric-label">Instrument</div>
+                                    <div class="metric-value">{{ investment.instrument }}</div>
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="investor-metric">
-                                    <div class="metric-label">Capital Called %</div>
+                                <div class="investment-metric">
+                                    <div class="metric-label">Deal Date</div>
                                     <div class="metric-value">
-                                        {% if investor_data.total_committed > 0 %}
-                                            {% widthratio investor_data.total_called investor_data.total_committed 100 %}%
+                                        {% if investment.deal_date %}
+                                            {{ investment.deal_date|date:"M d, Y" }}
                                         {% else %}
-                                            0%
+                                            N/A
                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    -->
                     </div>
-                
                     <div class="card-footer bg-transparent">
                         <div class="d-flex justify-content-between align-items-center">
-                            <a href="{{ investor_data.investor.get_absolute_url }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ investment.get_absolute_url }}" class="btn btn-sm btn-outline-primary">
                                 View Details
                             </a>
                             <div class="action-buttons">
-                                <a href="{% url 'edit_investor' pk=investor_data.investor.id %}" class="btn btn-sm btn-outline-secondary me-1" title="Edit Investor">
+                                <a href="{% url 'edit_investment' pk=investment.id %}" class="btn btn-sm btn-outline-secondary me-1" title="Edit Investment">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{% url 'delete_investor' pk=investor_data.investor.id %}" class="btn btn-sm btn-outline-danger" title="Delete Investor">
+                                <a href="{% url 'delete_investment' pk=investment.id %}" class="btn btn-sm btn-outline-danger" title="Delete Investment">
                                     <i class="fas fa-trash-alt"></i>
                                 </a>
                             </div>
@@ -170,11 +146,11 @@ Investors Dashboard
             <div class="col-12">
                 <div class="card">
                     <div class="card-body text-center py-5">
-                        <i class="fas fa-user-tie fa-3x text-muted mb-3"></i>
-                        <h4 class="text-muted">No investors found</h4>
-                        <p class="text-muted">Get started by adding your first investor</p>
-                        <a href="{% url 'add_investor' %}" class="btn btn-primary mt-2">
-                            <i class="fas fa-plus me-2"></i>Add New Investor
+                        <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No investments found</h4>
+                        <p class="text-muted">Get started by adding your first investment</p>
+                        <a href="{% url 'add_investment' %}" class="btn btn-primary mt-2">
+                            <i class="fas fa-plus me-2"></i>Add New Deal
                         </a>
                     </div>
                 </div>
@@ -183,25 +159,25 @@ Investors Dashboard
     </div>
 
     <!-- Summary Stats -->
-    {% if investors_data %}
+    {% if investments %}
     <div class="row mt-5">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Investor Summary</h5>
+                    <h5 class="card-title mb-0">Portfolio Summary</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-3 col-6 text-center mb-3">
                             <div class="summary-stat">
-                                <div class="stat-value text-primary">{{ investors_data|length }}</div>
-                                <div class="stat-label">Total Investors</div>
+                                <div class="stat-value text-primary">{{ investments|length }}</div>
+                                <div class="stat-label">Total Deals</div>
                             </div>
                         </div>
                         <div class="col-md-3 col-6 text-center mb-3">
                             <div class="summary-stat">
                                 <div class="stat-value text-success">
-                                    ${{ total_committed|floatformat:2|default:"0.00" }}
+                                    ${{ total_committed|floatformat:2 }}
                                 </div>
                                 <div class="stat-label">Total Committed</div>
                             </div>
@@ -209,21 +185,17 @@ Investors Dashboard
                         <div class="col-md-3 col-6 text-center mb-3">
                             <div class="summary-stat">
                                 <div class="stat-value text-info">
-                                    ${{ total_called|floatformat:2|default:"0.00" }}
+                                    ${{ total_invested|floatformat:2 }}
                                 </div>
-                                <div class="stat-label">Total Called</div>
+                                <div class="stat-label">Total Invested</div>
                             </div>
                         </div>
                         <div class="col-md-3 col-6 text-center mb-3">
                             <div class="summary-stat">
                                 <div class="stat-value text-warning">
-                                    {% if total_committed > 0 %}
-                                        {% widthratio total_called total_committed 100 %}%
-                                    {% else %}
-                                        0%
-                                    {% endif %}
+                                    {{ investment_completion }}%
                                 </div>
-                                <div class="stat-label">Avg. Called %</div>
+                                <div class="stat-label">Avg. Completion</div>
                             </div>
                         </div>
                     </div>
@@ -235,11 +207,11 @@ Investors Dashboard
 </div>
 
 <style>
-.investors-dashboard {
+.investments-dashboard {
     padding: 20px 0;
 }
 
-.investor-card {
+.investment-card {
     border: 1px solid #417a59;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
@@ -247,31 +219,32 @@ Investors Dashboard
     overflow: hidden;
 }
 
-.investor-card:hover {
+.investment-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 25px rgba(0,0,0,0.12);
 }
 
-.investor-card .card-header {
+.investment-card .card-header {
     background: linear-gradient(120deg, #f8faf8 0%, #fff 100%);
     border-bottom: 1px solid #eaecf4;
     padding: 20px 20px 10px;
     position: relative;
 }
 
-.investor-logo-placeholder {
+.investment-logo-placeholder {
     position: absolute;
     top: 15px;
     right: 20px;
     width: 50px;
     height: 50px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #4f765f 0%, #417a59  100%);
+    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     font-size: 1.5rem;
+    font-weight: bold;
 }
 
 .card-title {
@@ -280,20 +253,12 @@ Investors Dashboard
     margin-right: 60px;
 }
 
-.investor-short-name {
+.investment-fund {
     font-size: 0.9rem;
     font-weight: 500;
 }
 
-.investor-contact-info {
-    font-size: 0.9rem;
-    padding: 10px 0;
-    border-top: 1px solid #f1f1f1;
-    border-bottom: 1px solid #f1f1f1;
-    margin-bottom: 15px;
-}
-
-.investor-metric {
+.investment-metric {
     margin-bottom: 15px;
 }
 
@@ -337,7 +302,7 @@ Investors Dashboard
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .investor-logo-placeholder {
+    .investment-logo-placeholder {
         width: 40px;
         height: 40px;
         font-size: 1.2rem;
@@ -364,7 +329,7 @@ Investors Dashboard
     to { opacity: 1; transform: translateY(0); }
 }
 
-.investor-card {
+.investment-card {
     animation: fadeIn 0.5s ease-out;
 }
 </style>

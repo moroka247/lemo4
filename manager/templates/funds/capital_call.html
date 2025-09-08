@@ -6,11 +6,21 @@
 
 {% block content %}
 <div class="container">
+
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'funds' %}">Funds</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'fund_detail' pk=fund.pk %}">{{ fund.name }}</a></li>
+            <li class="breadcrumb-item active">Capital Call</li>
+        </ol>
+    </nav>
+
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>{{ fund.name }} - Capital Call</h2>
         <a href="{% url 'fund_detail' pk=fund.pk %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Back to Fund Details
+            <i class="fas fa-arrow-left"></i> Back to Fund Overview
         </a>
     </div>
 
@@ -43,7 +53,7 @@
                             <td><strong>Fund Interest</strong></td>
                             <td class="text-end">100.00%</td>
                             {% for investor in investor_data %}
-                            <td class="text-end">{{ investor.fund_interest|floatformat:2 }}%</td>
+                            <td class="text-end">{{ investor.fund_interest|percent:2 }}</td>
                             {% endfor %}
                         </tr>
                         <tr>
@@ -105,33 +115,48 @@
                                     <tr>
                                         <th>Select</th>
                                         <th>Period</th>
-                                        <th>Basis Type</th>
-                                        <th>Basis Amount</th>
-                                        <th>Fee Rate</th>
-                                        <th>Fee Amount</th>
+                                        <th>Fee Basis</th>
+                                        <th class="text-end">Gross Fee</th>
+                                        <th class="text-end">VAT</th>
+                                        <th class="text-end">Total Fee</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for fee in unpaid_management_fees %}
-                                    <tr>
-                                        <td>
-                                            <input type="checkbox" name="selected_management_fees" 
-                                                   value="{{ fee.id }}" class="form-check-input management-fee-checkbox">
-                                        </td>
-                                        <td>{{ fee.period_start_date|date:"M d, Y" }} - {{ fee.period_end_date|date:"M d, Y" }}</td>
-                                        <td>{{ fee.get_basis_type_display }}</td>
-                                        <td class="text-end">${{ fee.calculated_basis|floatformat:2 }}</td>
-                                        <td class="text-end">{{ fee.applicable_fee_rate|floatformat:4 }}</td>
-                                        <td class="text-end">${{ fee.gross_fee_amount|floatformat:2 }}</td>
-                                    </tr>
-                                    {% endfor %}
+                                {% for fee in unpaid_management_fees %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" name="selected_management_fees" value="{{ fee.id }}">
+                                    </td>
+                                    <td>{{ fee.period_start_date }} to {{ fee.period_end_date }}</td>
+                                    <td>
+                                        {% if fee.basis_type == 'C' %}
+                                            Committed Capital
+                                        {% elif fee.basis_type == 'I' %}
+                                            Invested Capital
+                                        {% elif fee.basis_type == 'N' %}
+                                            NAV
+                                        {% else %}
+                                            {{ fee.basis_type }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">${{ fee.gross_fee_amount|floatformat:2 }}</td>
+                                    <td class="text-end">
+                                        {% if fee.vat_applicable %}
+                                            ${{ fee.vat_amount|floatformat:2 }} ({{ fee.vat_rate|percent:1 }})
+                                        {% else %}
+                                            Not applicable
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">${{ fee.total_fee_amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-                {% endif %}
-                
+                {% endif %} 
+
                 <!-- Multiple Items Formset -->
                 <h6>Capital Call Items</h6>
                 {{ item_formset.management_form }}
@@ -213,6 +238,19 @@
                                     {% endfor %}
                                 </tr>
                                 {% endfor %}
+                                
+                                <!-- TOTAL ROW -->
+                                <tr class="table-success fw-bold">
+                                    <td colspan="3" class="text-left">Total</td>
+                                    <td class="text-end">{{ notice_data.total_amount|floatformat:2 }}</td>
+                                    {% for investor in investor_data %}
+                                    <td class="text-end">
+                                        {% with investor_id=investor.investor.id %}
+                                        {% total_investor_amount notice_data.descriptions investor_id %}
+                                        {% endwith %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -224,6 +262,7 @@
         </div>
     </div>
 
+</div>
 </div>
 {% endblock %}
 

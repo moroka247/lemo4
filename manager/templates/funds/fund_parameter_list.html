@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="fas fa-cog me-2"></i>Fund Parameters</h2>
+            <p class="text-muted">Configure management fee calculation settings for each fund</p>
+        </div>
+        <div class="col-auto">
+            <!-- Add Create button here -->
+            <a href="{% url 'fund_parameter_create' %}" class="btn btn-success me-2">
+                <i class="fas fa-plus me-1"></i>Add Parameters
+            </a>
+            <a href="{% url 'calculate_management_fees' %}" class="btn btn-primary">
+                <i class="fas fa-calculator me-1"></i>Calculate Fees
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Fund Name</th>
+                            <th>Fee Frequency</th>
+                            <th>Investment Basis</th>
+                            <th>Divestment Basis</th>
+                            <th>Fiscal Year End</th>
+                            <th>Investment Period End</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for param in parameters %}
+                        <tr>
+                            <td>{{ param.fund.name }}</td>
+                            <td>{{ param.get_fee_frequency_display }}</td>
+                            <td>{{ param.get_investment_period_fee_basis_display }}</td>
+                            <td>{{ param.get_divest_period_fee_basis_display }}</td>
+                            <td>{{ param.get_fiscal_year_end_month_display }}</td>
+                            <td>{{ param.investment_period_end_date }}</td>
+                            <td>
+                                <a href="{% url 'fund_parameter_edit' param.pk %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                No fund parameters configured. 
+                                <a href="{% url 'fund_parameter_create' %}">Create fund parameters</a> to enable fee calculations.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

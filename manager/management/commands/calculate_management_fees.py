@@ -1,11 +1,13 @@
 # manager/management/commands/calculate_management_fees.py
 from datetime import datetime, timedelta
 import calendar
+from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.db.models import Sum, Q
 from manager.models import Fund, FundParameter, ManagementFees, CommittedCapital
 from manager.choices import FeeFrequency, FeeBasis, Month
+from manager.models import InvestorType
 
 class Command(BaseCommand):
     help = 'Calculates management fees for all funds based on their schedule'
@@ -33,6 +35,78 @@ class Command(BaseCommand):
             return datetime.strptime(options['date'], '%Y-%m-%d').date()
         else:
             return timezone.now().date()
+
+    def period_exists(self, fund, period_start, period_end):
+        """Check if a fee period already exists"""
+        return ManagementFees.objects.filter(
+            fund=fund,
+            period_start_date=period_start,
+            period_end_date=period_end
+        ).exists()
+
+    def create_fee_record(self, fund, period_start, period_end, result, params):
+        """Safe fee record creation with validation"""
+        # Get first commitment date
+        first_commitment_date = fund.get_first_commitment_date()
+        
+        # VALIDATION: Ensure period doesn't start before first commitment
+        if first_commitment_date and period_start < first_commitment_date:
+            self.stdout.write(self.style.WARNING(
+                f"Adjusted period start for {fund.name}: {period_start} to {first_commitment_date}"
+            ))
+            period_start = first_commitment_date
+        
+        # VALIDATION: Ensure start date is before end date
+        if period_start > period_end:
+            self.stdout.write(self.style.ERROR(
+                f"INVALID DATE RANGE for {fund.name}: {period_start} to {period_end} - Skipping"
+            ))
+            return None
+        
+        try:
+            if ManagementFees.objects.filter(
+                fund=fund,
+                period_start_date=period_start,
+                period_end_date=period_end
+            ).exists():
+                self.stdout.write(self.style.WARNING(
+                    f"Skipping {fund.name}: Fee already exists for period {period_start} to {period_end}"
+                ))
+                return None
+            
+            # Create draft fee record with VAT information
+            fee_record = ManagementFees.objects.create(
+                fund=fund,
+                period_start_date=period_start,
+                period_end_date=period_end,
+                calculated_basis=result['calculated_basis'],
+                basis_type=result['basis_type'],
+                gross_fee_amount=result['gross_fee_amount'],
+                applicable_fee_rate=result['applicable_fee_rate'],
+                prorated=result['prorated'],
+                vat_applicable=result['vat_applicable'],
+                vat_rate=result['vat_rate'],
+                vat_amount=result['vat_amount'],
+                total_fee_amount=result['total_fee_amount'],
+                paid=False,
+                capital_call=None
+            )
+            
+            fee_message = f"Created DRAFT fee for {fund.name}: ${result['gross_fee_amount']:,.2f}"
+            if result['vat_applicable']:
+                fee_message += f" + ${result['vat_amount']:,.2f} VAT = ${result['total_fee_amount']:,.2f} total"
+            
+            fee_message += f" based on {result['basis_type']} for period {period_start} to {period_end}"
+            
+            self.stdout.write(self.style.SUCCESS(fee_message))
+            
+            return fee_record
+            
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(
+                f"Failed to create fee record for {fund.name}: {str(e)}"
+            ))
+            return None
 
     def process_fund(self, fund, calculation_date, options):
         try:
@@ -73,62 +147,6 @@ class Command(BaseCommand):
                 import traceback
                 traceback.print_exc()
 
-    def period_exists(self, fund, period_start, period_end):
-        """Check if a fee period already exists"""
-        return ManagementFees.objects.filter(
-            fund=fund,
-            period_start_date=period_start,
-            period_end_date=period_end
-        ).exists()
-
-    def create_fee_record(self, fund, period_start, period_end, result, params):
-        """Safe fee record creation with validation"""
-        # VALIDATION: Ensure start date is before end date
-        if period_start > period_end:
-            self.stdout.write(self.style.ERROR(
-                f"INVALID DATE RANGE for {fund.name}: {period_start} to {period_end} - Skipping"
-            ))
-            return None
-        
-        try:
-            if ManagementFees.objects.filter(
-                fund=fund,
-                period_start_date=period_start,
-                period_end_date=period_end
-            ).exists():
-                self.stdout.write(self.style.WARNING(
-                    f"Skipping {fund.name}: Fee already exists for period {period_start} to {period_end}"
-                ))
-                return None
-            
-            fee_record = ManagementFees.objects.create(
-                fund=fund,
-                period_start_date=period_start,
-                period_end_date=period_end,
-                calculated_basis=result['calculated_basis'],
-                basis_type=result['basis_type'],
-                gross_fee_amount=result['gross_fee_amount'],
-                applicable_fee_rate=result['applicable_fee_rate'],
-                paid=False,
-                capital_call=None
-            )
-            
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Successfully calculated fee for {fund.name}: "
-                    f"${result['gross_fee_amount']:,.2f} based on {result['basis_type']} "
-                    f"for period {period_start} to {period_end}"
-                )
-            )
-            
-            return fee_record
-            
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(
-                f"Failed to create fee record for {fund.name}: {str(e)}"
-            ))
-            return None
-
     def is_fee_calculation_day(self, date, params):
         """More reliable fee calculation day check"""
         period_end_months = params.get_period_end_months()
@@ -163,20 +181,29 @@ class Command(BaseCommand):
 
     def get_period_dates(self, calculation_date, params):
         """Handle all fee frequencies including non-standard quarters"""
+        # Get the fund from params
+        fund = params.fund
+        
+        # Get first commitment date
+        first_commitment_date = fund.get_first_commitment_date()
+        
         if params.fee_frequency == FeeFrequency.QUARTERLY:
-            return self.get_quarterly_dates(calculation_date, params)
-        
+            start_date, end_date = self.get_quarterly_dates(calculation_date, params)
         elif params.fee_frequency == FeeFrequency.SEMI_ANNUALLY:
-            return self.get_semi_annual_dates(calculation_date, params)
-        
+            start_date, end_date = self.get_semi_annual_dates(calculation_date, params)
         elif params.fee_frequency == FeeFrequency.ANNUALLY:
-            return self.get_annual_dates(calculation_date, params)
-        
+            start_date, end_date = self.get_annual_dates(calculation_date, params)
         elif params.fee_frequency == FeeFrequency.MONTHLY:
-            return self.get_monthly_dates(calculation_date)
+            start_date, end_date = self.get_monthly_dates(calculation_date)
+        else:
+            # Default to calendar quarters
+            start_date, end_date = self.get_calendar_quarter_dates(calculation_date)
         
-        # Default to calendar quarters
-        return self.get_calendar_quarter_dates(calculation_date)
+        # Adjust start date if it's before the first commitment
+        if first_commitment_date and start_date < first_commitment_date:
+            start_date = first_commitment_date
+        
+        return start_date, end_date
 
     def get_quarterly_dates(self, calculation_date, params):
         """Handle quarterly periods with custom end months, including non-standard ordering"""
@@ -342,29 +369,85 @@ class Command(BaseCommand):
 
     def calculate_management_fee(self, fund, period_start, period_end, params):
         """Calculate management fee for a fund on a specific date"""
+        # Get first commitment date
+        first_commitment_date = fund.get_first_commitment_date()
+        
+        # If period starts before first commitment, adjust start date
+        if first_commitment_date and period_start < first_commitment_date:
+            period_start = first_commitment_date
+        
+        # If period starts after period ends (after adjustment), return zero
+        if period_start > period_end:
+            # Determine the correct basis type based on the period
+            if period_end <= params.investment_period_end_date:
+                basis_type = params.investment_period_fee_basis
+            else:
+                basis_type = params.divest_period_fee_basis
+                
+            return {
+                'calculated_basis': 0,
+                'basis_type': basis_type,
+                'gross_fee_amount': 0,
+                'applicable_fee_rate': 0,
+                'prorated': True,
+                'vat_applicable': getattr(params, 'vat_registered', False),
+                'vat_rate': getattr(params, 'vat_rate', Decimal('0.15')),
+                'vat_amount': Decimal('0.00'),
+                'total_fee_amount': Decimal('0.00')
+            }
+
         # 1. Determine the fund's phase (Investment or Divestment)
         if period_end <= params.investment_period_end_date:
             basis_type = params.investment_period_fee_basis
             fee_rate = fund.man_fee  # Full management fee during investment period
+            phase = "INVESTMENT"
         else:
-            basis_type = params.divestment_period_fee_basis
+            basis_type = params.divest_period_fee_basis
             # Reduced fee rate during divestment period (typically 50-80% of full fee)
-            fee_rate = fund.man_fee * getattr(params, 'divestment_fee_percentage', 100) / 100
+            divestment_percentage = getattr(params, 'divestment_fee_percentage', 100)
+            fee_rate = fund.man_fee * divestment_percentage / 100
+            phase = "DIVESTMENT"
+
+        # Debug output
+        self.stdout.write(
+            self.style.NOTICE(
+                f"Fund {fund.name} is in {phase} period. "
+                f"Using basis: {basis_type}, rate: {fee_rate:.3%}"
+            )
+        )
 
         # 2. Calculate the basis value based on the selected type
         if basis_type == FeeBasis.COMMITTED_CAPITAL:
-            basis_value = CommittedCapital.objects.filter(
-                fund=fund, 
-                investor__isnull=False
-            ).aggregate(total=Sum('amount'))['total'] or 0
+            # Get commitments as of period end, EXCLUDING General Partners
+            try:
+                # Get the General Partner investor type
+                gp_type = InvestorType.objects.get(category="General Partner")
+                
+                # Use exclude() instead of __ne lookup
+                basis_value = CommittedCapital.objects.filter(
+                    fund=fund, 
+                    investor__isnull=False,
+                    date__lte=period_end  # Only include commitments made by period end
+                ).exclude(
+                    investor__category=gp_type  # Exclude General Partners
+                ).aggregate(total=Sum('amount'))['total'] or 0
+                
+            except InvestorType.DoesNotExist:
+                # If General Partner type doesn't exist, include all investors
+                basis_value = CommittedCapital.objects.filter(
+                    fund=fund, 
+                    investor__isnull=False,
+                    date__lte=period_end
+                ).aggregate(total=Sum('amount'))['total'] or 0
             
             self.stdout.write(
                 self.style.NOTICE(
-                    f"Found ${basis_value:,.2f} in total commitments for {fund.name}"
+                    f"Found ${basis_value:,.2f} in total commitments (excl. GPs) for {fund.name} as of {period_end}"
                 )
             )
             
         elif basis_type == FeeBasis.INVESTED_CAPITAL:
+            # For invested capital, you'll need to implement similar exclusion
             basis_value = 0
             self.stdout.write(self.style.WARNING(f"Invested Capital basis not implemented for {fund.name}"))
             
@@ -373,106 +456,142 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"NAV basis not implemented for {fund.name}"))
             
         else:
-            raise ValueError(f"Unknown basis type: {basis_type}")
+            self.stdout.write(self.style.ERROR(
+                f"Unknown basis type: {basis_type} for fund {fund.name}. "
+                f"Falling back to Committed Capital."
+            ))
+            # Fallback to Committed Capital
+            try:
+                gp_type = InvestorType.objects.get(category="General Partner")
+                
+                basis_value = CommittedCapital.objects.filter(
+                    fund=fund, 
+                    investor__isnull=False,
+                    date__lte=period_end
+                ).exclude(
+                    investor__category=gp_type
+                ).aggregate(total=Sum('amount'))['total'] or 0
+                
+            except InvestorType.DoesNotExist:
+                basis_value = CommittedCapital.objects.filter(
+                    fund=fund, 
+                    investor__isnull=False,
+                    date__lte=period_end
+                ).aggregate(total=Sum('amount'))['total'] or 0
 
-        # 3. Calculate the gross fee amount - RESPECT ACTUAL FREQUENCY
-        frequency_factors = {
-            FeeFrequency.ANNUALLY: 1,
-            FeeFrequency.SEMI_ANNUALLY: 2,
-            FeeFrequency.QUARTERLY: 4,
-            FeeFrequency.MONTHLY: 12
-        }
+        # 3. ALWAYS use day-based calculation (days/365)
+        # Calculate days in period (using 365 days per year, ignoring leap years)
+        days_in_period = (period_end - period_start).days + 1
+        days_in_year = 365  # Always use 365 days, ignoring leap years
         
-        periods_per_year = frequency_factors.get(params.fee_frequency, 4)  # Default to quarterly
+        gross_fee_amount = (basis_value * fee_rate * days_in_period) / days_in_year
         
-        # Calculate prorated fee if needed (using safe attribute access)
-        prorate_fees = getattr(params, 'prorate_fees', False)
-        if prorate_fees:
-            days_in_period = (period_end - period_start).days + 1
-            days_in_year = 366 if calendar.isleap(period_end.year) else 365
-            gross_fee_amount = (basis_value * fee_rate * days_in_period) / days_in_year
-        else:
-            gross_fee_amount = (basis_value * fee_rate) / periods_per_year
+        # Calculate VAT if applicable
+        vat_applicable = getattr(params, 'vat_registered', False)
+        vat_rate = getattr(params, 'vat_rate', Decimal('0.15'))  # Default to 15%
+        vat_amount = Decimal('0.00')
+        total_fee_amount = gross_fee_amount
+        
+        if vat_applicable:
+            vat_amount = gross_fee_amount * vat_rate
+            total_fee_amount = gross_fee_amount + vat_amount
+            
+            # DEBUG: Show VAT calculation details
+            self.stdout.write(
+                self.style.NOTICE(
+                    f"VAT calculation: "
+                    f"Gross Fee: ${gross_fee_amount:,.2f}, "
+                    f"VAT Rate: {vat_rate:.1%}, "
+                    f"VAT Amount: ${vat_amount:,.2f}, "
+                    f"Total Fee: ${total_fee_amount:,.2f}"
+                )
+            )
+
+        # DEBUG: Show calculation details
+        self.stdout.write(
+            self.style.NOTICE(
+                f"Day-based calculation: "
+                f"Basis: ${basis_value:,.2f}, "
+                f"Rate: {fee_rate:.3%}, "
+                f"Days in period: {days_in_period}, "
+                f"Days in year: {days_in_year}, "
+                f"Gross Fee: ${gross_fee_amount:,.2f}"
+            )
+        )
 
         return {
             'calculated_basis': basis_value,
             'basis_type': basis_type,
             'gross_fee_amount': gross_fee_amount,
             'applicable_fee_rate': fee_rate,
-            'prorated': prorate_fees
+            'prorated': True,
+            'vat_applicable': vat_applicable,
+            'vat_rate': vat_rate,
+            'vat_amount': vat_amount,
+            'total_fee_amount': total_fee_amount
         }
 
 
-    def create_fee_record(self, fund, period_start, period_end, result, params):
-        """Create a DRAFT management fee record (no capital call created yet)"""
-        try:
-            # Check if record already exists
-            if ManagementFees.objects.filter(
-                fund=fund,
-                period_start_date=period_start,
-                period_end_date=period_end
-            ).exists():
-                self.stdout.write(self.style.WARNING(
-                    f"Skipping {fund.name}: Fee already exists for period {period_start} to {period_end}"
-                ))
-                return None
-            
-            # Create draft fee record (paid=False, no capital_call)
-            fee_record = ManagementFees.objects.create(
-                fund=fund,
-                period_start_date=period_start,
-                period_end_date=period_end,
-                calculated_basis=result['calculated_basis'],
-                basis_type=result['basis_type'],
-                gross_fee_amount=result['gross_fee_amount'],
-                applicable_fee_rate=result['applicable_fee_rate'],
-                prorated=result['prorated'],
-                paid=False,
-                capital_call=None  # Will be set when confirmed in the view
-            )
-            
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Created DRAFT fee for {fund.name}: "
-                    f"${result['gross_fee_amount']:,.2f} based on {result['basis_type']} "
-                    f"for period {period_start} to {period_end}"
-                )
-            )
-            
-            return fee_record
-            
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(
-                f"Failed to create fee record for {fund.name}: {str(e)}"
-            ))
-            return None
-
     def calculate_prorated_fee(self, fund, period_start, period_end, params, basis_value, fee_rate):
-        """Calculate prorated fee for partial periods"""
+        """Calculate prorated fee for partial periods using 365 days per year"""
+        # Get first commitment date
+        first_commitment_date = fund.get_first_commitment_date()
+        
+        # If period starts before first commitment, adjust start date
+        if first_commitment_date and period_start < first_commitment_date:
+            period_start = first_commitment_date
+        
+        # If period starts after period ends (after adjustment), return zero
+        if period_start > period_end:
+            return 0
+
         total_days = (period_end - period_start).days + 1
         
-        # Check for commitment changes during period
-        commitment_changes = CommittedCapital.objects.filter(
-            fund=fund,
-            effective_date__gte=period_start,
-            effective_date__lte=period_end
-        ).order_by('effective_date')
+        # Check for commitment changes during period, EXCLUDING General Partners
+        try:
+            gp_type = InvestorType.objects.get(category="General Partner")
+            
+            # Use exclude() instead of __ne lookup
+            commitment_changes = CommittedCapital.objects.filter(
+                fund=fund,
+                date__gte=period_start,
+                date__lte=period_end
+            ).exclude(
+                investor__category=gp_type  # Exclude General Partners
+            ).order_by('date')
+            
+            initial_commitments = CommittedCapital.objects.filter(
+                fund=fund,
+                date__lt=period_start
+            ).exclude(
+                investor__category=gp_type  # Exclude General Partners
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+        except InvestorType.DoesNotExist:
+            # If General Partner type doesn't exist, include all investors
+            commitment_changes = CommittedCapital.objects.filter(
+                fund=fund,
+                date__gte=period_start,
+                date__lte=period_end
+            ).order_by('date')
+            
+            initial_commitments = CommittedCapital.objects.filter(
+                fund=fund,
+                date__lt=period_start
+            ).aggregate(total=Sum('amount'))['total'] or 0
         
         if not commitment_changes.exists():
             # No changes during period - simple calculation
-            return (basis_value * fee_rate) / self.get_periods_per_year(params.fee_frequency)
+            return (basis_value * fee_rate * total_days) / 365  # Use 365 days
         
         # Calculate weighted average basis for the period
         weighted_basis = 0
         current_start = period_start
-        total_commitments = CommittedCapital.objects.filter(
-            fund=fund,
-            effective_date__lt=period_start
-        ).aggregate(total=Sum('amount'))['total'] or 0
+        total_commitments = initial_commitments
         
         for change in commitment_changes:
             # Calculate days in current segment
-            segment_days = (change.effective_date - current_start).days
+            segment_days = (change.date - current_start).days
             weighted_basis += total_commitments * segment_days
             
             # Update commitments
@@ -481,7 +600,7 @@ class Command(BaseCommand):
             else:
                 total_commitments = max(0, total_commitments + change.amount)
             
-            current_start = change.effective_date
+            current_start = change.date
         
         # Add the final segment
         final_segment_days = (period_end - current_start).days + 1
@@ -490,11 +609,11 @@ class Command(BaseCommand):
         # Calculate average daily basis
         average_daily_basis = weighted_basis / total_days
         
-        # Calculate prorated annual fee
+        # Calculate prorated annual fee using 365 days
         annual_fee = average_daily_basis * fee_rate
         
         # Return prorated fee for the period
-        return annual_fee * total_days / (366 if calendar.isleap(period_end.year) else 365)
+        return annual_fee * total_days / 365  # Always use 365 days
 
     def calculate_invested_capital(self, fund, as_of_date):
         """Calculate invested capital for fee basis"""

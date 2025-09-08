@@ -79,3 +79,66 @@ def first_investor(queryset, investor_id):
 @register.filter
 def get_item(dictionary, key):
     return dictionary.get(key)
+
+@register.simple_tag
+def total_investor_amount(descriptions, investor_id):
+    """Calculate total amount for a specific investor across all descriptions"""
+    total = 0
+    for desc_data in descriptions.values():
+        amount = desc_data['investor_amounts'].get(investor_id, 0)
+        if amount:
+            total += amount
+    return f"{total:,.2f}" if total != 0 else "-"
+
+@register.filter(name='sub')
+def sub(value, arg):
+    """Subtract the arg from the value"""
+    try:
+        return float(value) - float(arg)
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter(name='div')
+def div(value, arg):
+    """Divide value by arg"""
+    try:
+        if float(arg) == 0:
+            return 0
+        return float(value) / float(arg)
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter
+def get_field(form, field_name):
+    """Get form field by name"""
+    return form[field_name]
+
+@register.filter
+def add(str1, str2):
+    """Concatenate two strings"""
+    return str(str1) + str(str2)
+
+@register.filter
+def get_field(form, field_name):
+    """Get form field by name, returns None if field doesn't exist"""
+    try:
+        return form[field_name]
+    except KeyError:
+        return None
+
+@register.filter
+def get_field_or_empty(form, field_name):
+    """Get form field by name, returns empty string if field doesn't exist (for safe rendering)"""
+    try:
+        return form[field_name]
+    except KeyError:
+        return ""
+
+@register.filter
+def get_field_by_index(form, base_name, index):
+    """Get form field by base name and index"""
+    field_name = f"{base_name}{index}_end_month"
+    try:
+        return form[field_name]
+    except KeyError:
+        return None

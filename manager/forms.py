@@ -1,7 +1,11 @@
 from django.utils import timezone
 from django import forms
 from django.forms import formset_factory, inlineformset_factory, modelformset_factory, BaseFormSet
-from . models import Investor, Fund, Investment, Company, CommittedCapital, Contact, CapitalCall, InvestorContact, CallType, AllocationRule
+from . models import (
+    Investor, Fund, Investment, Company, CommittedCapital, Contact, CapitalCall, 
+    InvestorContact, CallType, AllocationRule, FundParameter
+)
+from .choices import FeeFrequency, FeeBasis, Month
 
 class InvestorForm(forms.ModelForm):
     class Meta:
@@ -13,6 +17,43 @@ class FundForm(forms.ModelForm):
         model = Fund
         fields = ['name','short_name','structure','objective','investment_period','divestment_period','currency','target_commitment',
                   'man_fee']
+
+class FundParameterForm(forms.ModelForm):
+    class Meta:
+        model = FundParameter
+        fields = '__all__'
+        widgets = {
+            'investment_period_end_date': forms.DateInput(attrs={'type': 'date'}),
+            'fee_frequency': forms.Select(choices=FeeFrequency.choices),
+            'investment_period_fee_basis': forms.Select(choices=FeeBasis.choices),
+            'divest_period_fee_basis': forms.Select(choices=FeeBasis.choices),
+            'vat_rate': forms.NumberInput(attrs={'step': '0.001', 'min': '0', 'max': '1'}),
+            'fiscal_year_end_month': forms.Select(choices=Month.choices),
+            'period1_end_month': forms.Select(choices=Month.choices),
+            'period2_end_month': forms.Select(choices=Month.choices),
+            'period3_end_month': forms.Select(choices=Month.choices),
+            'period4_end_month': forms.Select(choices=Month.choices),
+            'period5_end_month': forms.Select(choices=Month.choices),
+            'period6_end_month': forms.Select(choices=Month.choices),
+            'period7_end_month': forms.Select(choices=Month.choices),
+            'period8_end_month': forms.Select(choices=Month.choices),
+            'period9_end_month': forms.Select(choices=Month.choices),
+            'period10_end_month': forms.Select(choices=Month.choices),
+            'period11_end_month': forms.Select(choices=Month.choices),
+            'period12_end_month': forms.Select(choices=Month.choices),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make period fields not required
+        for i in range(1, 13):
+            self.fields[f'period{i}_end_month'].required = False
+
+    def clean_vat_rate(self):
+        vat_rate = self.cleaned_data.get('vat_rate')
+        if vat_rate < 0 or vat_rate > 1:
+            raise forms.ValidationError("VAT rate must be between 0 and 1 (e.g., 0.15 for 15%)")
+        return vat_rate
 
 class InvestmentForm(forms.ModelForm):
     class Meta:
@@ -94,7 +135,6 @@ class CapitalCallItemForm(forms.Form):
         label='Amount'
     )
 
-# Create formset
 CapitalCallItemFormSet = formset_factory(
     CapitalCallItemForm,
     extra=3,

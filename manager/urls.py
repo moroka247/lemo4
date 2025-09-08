@@ -55,6 +55,15 @@ urlpatterns = [
     path('funds/<int:pk>/commit/', FundCloseView.as_view(), name='fund_close'),
     path('funds/<int:fund_pk>/investor/<int:investor_pk>/commitments/', InvestorCommitmentsView.as_view(), name='investor_commitments'),
     path('fund/<int:pk>/capital_call/', CapitalCallView.as_view(), name='capital_call'),
+    # Fund Parameter Management
+    path('fund-parameters/', FundParameterListView.as_view(), name='fund_parameter_list'),
+    path('fund-parameters/new/', FundParameterCreateView.as_view(), name='fund_parameter_create'),
+    path('fund-parameters/<int:pk>/edit/', FundParameterUpdateView.as_view(), name='fund_parameter_edit'),
+    # Management Fee Calculation
+    path('calculate-management-fees/', CalculateManagementFeesView.as_view(), name='calculate_management_fees'),
+    path('management-fees/', ManagementFeeListView.as_view(), name='management_fee_list'),
+    path('management-fees/<int:fee_id>/mark-paid/', mark_fee_paid, name='mark_fee_paid'),
+    path('management-fees/<int:fee_id>/delete/', delete_management_fee, name='delete_management_fee'),
     # Investors
     path('investors/', InvestorsList.as_view(), name='investors'),
     path('investors/<int:pk>', InvestorDetail.as_view(), name='investor_detail'),

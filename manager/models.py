@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.shortcuts import reverse
@@ -84,9 +85,10 @@ class InvestorDocument(models.Model):
 class Currency(models.Model):
     name = models.CharField(max_length=50)   
     code = models.CharField(max_length=4)
+    symbol = models.CharField(max_length=1, null=False)
 
     def __str__(self):
-        return str(self.code)
+        return f"{self.symbol} ({self.code})"
 
     class Meta:
         verbose_name_plural = 'Currencies'
@@ -114,15 +116,41 @@ class Fund(models.Model):
     def __str__(self):
         return str(self.name)
     
+    def save(self, *args, **kwargs):
+        self.life = self.investment_period + self.divestment_period
+        super().save(*args, **kwargs)
+
+    def currency_symbol(self):
+        return self.currency.symbol    
+    
     def get_absolute_url(self):
         return reverse('fund_detail', kwargs={'pk':self.pk})
 
-# manager/models.py
-from .choices import FeeFrequency, FeeBasis, Month
+    def get_first_commitment_date(self):
+        """Return the date of the first committed capital for this fund"""
+        first_commitment = CommittedCapital.objects.filter(
+            fund=self
+        ).order_by('date').first()
+        
+        if first_commitment:
+            return first_commitment.date
+        return None
 
 class FundParameter(models.Model):
     fund = models.OneToOneField(Fund, on_delete=models.CASCADE, related_name='parameters')
     
+    # VAT Configuration
+    vat_registered = models.BooleanField(
+        default=False,
+        help_text="Whether the fund manager is VAT registered"
+    )
+    vat_rate = models.DecimalField(
+        max_digits=5, 
+        decimal_places=3,
+        default=Decimal('0.15'),  # 15% default VAT rate
+        help_text="VAT rate to apply (e.g., 0.15 for 15%)"
+    )
+
     # Fee Calculation Configuration
     fee_frequency = models.CharField(
         max_length=1,
@@ -210,7 +238,6 @@ class FundParameter(models.Model):
         
         return []
 
-
 class FundClose(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)
     close_date = models.DateField(auto_now=False)
@@ -254,32 +281,27 @@ class NoticeNumber(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.notice_code:
-            # Generate notice code: FUNDCODE-YYYY-MM-SEQ
-            fund_code = self.fund.short_name or self.fund.name[:3].upper()
-            year_month = self.date.strftime('%Y-%m')
-            
-            # Get the next sequence number for this fund and month
+            # Get the next notice number for this specific fund
             last_notice = NoticeNumber.objects.filter(
-                fund=self.fund,
-                date__year=self.date.year,
-                date__month=self.date.month
-            ).order_by('notice_code').last()
+                fund=self.fund
+            ).order_by('-id').first()
             
             if last_notice and last_notice.notice_code:
                 try:
-                    last_seq = int(last_notice.notice_code.split('-')[-1])
-                    next_seq = last_seq + 1
-                except (ValueError, IndexError):
-                    next_seq = 1
+                    # Extract the number part and increment
+                    last_number = int(last_notice.notice_code)
+                    next_number = last_number + 1
+                except (ValueError, AttributeError):
+                    next_number = 1
             else:
-                next_seq = 1
+                next_number = 1
                 
-            self.notice_code = f"{fund_code}-{year_month}-{next_seq:03d}"
+            self.notice_code = str(next_number)
         
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return str(self.number) + ' | ' + str(self.fund) + ' | ' + str(self.investor)
+        return f"{self.notice_code} | {self.fund.name} | {self.investor.name if self.investor else 'Batch'}"
 
 class CommittedCapital(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE,null=False)
@@ -345,6 +367,7 @@ class ManagementFees(models.Model):
     basis_type = models.CharField(max_length=2, choices=FeeBasis.choices)
     gross_fee_amount = models.DecimalField(max_digits=15, decimal_places=2)
     applicable_fee_rate = models.DecimalField(max_digits=6, decimal_places=4)
+    prorated = models.BooleanField(default=True)
     capital_call = models.ForeignKey(
         'CapitalCall', 
         on_delete=models.SET_NULL, 
@@ -358,6 +381,17 @@ class ManagementFees(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # VAT fields
+    vat_applicable = models.BooleanField(default=False)
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=3, default=Decimal('0.00'))
+    vat_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    total_fee_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+
+    @property
+    def calculation_date(self):
+        """Backward compatibility property - returns the date part of created_at"""
+        return self.created_at.date()
+
     class Meta:
         verbose_name_plural = "Management fees"
         ordering = ['-period_end_date', 'fund']

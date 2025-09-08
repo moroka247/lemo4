@@ -41,6 +41,7 @@
 
     <!-- Chart JS-->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
     <title>LEMO | {% block title %}Home{% endblock title %}</title>
 
@@ -98,6 +99,23 @@
                     <i class="fas fa-tools"></i><span> Admin</span>
                 </a>
             </div>
+
+            <div class="menu-item">
+                <a class="text-decoration-none text-white" href="{% url 'fund_parameter_list' %}">
+                    <i class="fas fa-cog"></i><span> Fund Parameters</span>
+                </a>
+            </div>
+            <div class="menu-item">
+                <a class="text-decoration-none text-white" href="{% url 'calculate_management_fees' %}">
+                    <i class="fas fa-calculator"></i> <span> Fees</span>
+                </a>
+            </div>
+            <div class="menu-item">
+                <a class="text-decoration-none text-white" href="{% url 'management_fee_list' %}">
+                    <i class="fas fa-file-invoice-dollar"></i><span> Management Fees</span>
+                </a>
+            </div>
+
         </div>
         <div class="toggle-btn" onclick="toggleSidebar()">
             <i id="toggle-icon" class="fas fa-chevron-right"></i>

@@ -24,8 +24,8 @@
                 </div>
                 <div class="card-body">
                     <p><strong>Fund Name:</strong> {{ fund.name }}</p>
-                    <p><strong>Fund Currency: </strong>{{ fund.currency }} </p>
-                    <p><strong>Target Commitment:</strong> {{ target_commitment|floatformat:2 }}</p>
+                    <p><strong>Fund Currency: </strong>{{ fund.currency.code }} </p>
+                    <p><strong>Target Commitment:</strong> {{ fund.currency.symbol }}{{ target_commitment|floatformat:2 }}</p>
                 </div>
             </div>
         </div>
@@ -142,7 +142,7 @@
                     <thead>
                         <tr>
                             <th>Investor</th>
-                            <th class="text-end">Commitment ({{ fund.currency.symbol }})</th>
+                            <th class="text-end">Commitment</th>
                             <th class="text-center">Fund Interest</th>
                             <th class="text-center">Last Commitment Date</th>
                             <th class="text-center">Actions</th>
@@ -152,7 +152,7 @@
                         {% for data in investor_data %}
                         <tr>
                             <td>{{ data.investor.name }}</td>
-                            <td class="text-end">{{ data.total_amount|floatformat:2 }}</td>
+                            <td class="text-end">{{ fund.currency.symbol }}{{ data.total_amount|floatformat:2 }}</td>
                             <td class="text-center">{{ data.fund_interest|floatformat:2 }}%</td>
                             <td class="text-center">{{ data.last_date|date:"M d, Y" }}</td>
                             <td class="text-center">
