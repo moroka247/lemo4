@@ -3,9 +3,8 @@ from django import forms
 from django.forms import formset_factory, inlineformset_factory, modelformset_factory, BaseFormSet
 from . models import (
     Investor, Fund, Investment, Company, CommittedCapital, Contact, CapitalCall, 
-    InvestorContact, CallType, AllocationRule, FundParameter
+    InvestorContact, CallType, AllocationRule, FundParameter, ExpenseType, FeeFrequency, FeeBasis, Month
 )
-from .choices import FeeFrequency, FeeBasis, Month
 
 class InvestorForm(forms.ModelForm):
     class Meta:
@@ -15,8 +14,57 @@ class InvestorForm(forms.ModelForm):
 class FundForm(forms.ModelForm):
     class Meta:
         model = Fund
-        fields = ['name','short_name','structure','objective','investment_period','divestment_period','currency','target_commitment',
-                  'man_fee']
+        fields = ['name', 'short_name', 'structure', 'objective', 'investment_period', 
+                 'divestment_period', 'currency', 'target_commitment', 'man_fee']
+        
+        # Optional: Add widgets for better UX
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'placeholder': 'Enter fund name',
+                'class': 'form-control'
+            }),
+            'short_name': forms.TextInput(attrs={
+                'placeholder': 'Enter short name',
+                'class': 'form-control'
+            }),
+            'structure': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'objective': forms.Textarea(attrs={
+                'placeholder': 'Describe the fund objective',
+                'class': 'form-control',
+                'rows': 3
+            }),
+            'investment_period': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Years',
+                'min': 0
+            }),
+            'divestment_period': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Years',
+                'min': 0
+            }),
+            'currency': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'target_commitment': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': '0.00',
+                'step': '1000',
+                'min': 0
+            }),
+            'man_fee': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': '0.00',
+                'step': '0.01',
+                'min': 0,
+                'max': 100
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 class FundParameterForm(forms.ModelForm):
     class Meta:
@@ -58,7 +106,22 @@ class FundParameterForm(forms.ModelForm):
 class InvestmentForm(forms.ModelForm):
     class Meta:
         model = Investment
-        fields = ['company','fund','instrument','committed_amount']
+        fields = ['date', 'company', 'fund', 'instrument', 'committed_amount', 
+                 'invested_amount', 'realised_proceeds', 'valuation', 'IRR', 'MOIC']
+        
+        # Add widgets for better UI if needed
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'company': forms.Select(attrs={'class': 'form-select'}),
+            'fund': forms.Select(attrs={'class': 'form-select'}),
+            'instrument': forms.Select(attrs={'class': 'form-select'}),
+            'committed_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'invested_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'realised_proceeds': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'valuation': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'IRR': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.001'}),
+            'MOIC': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
 
 class CompanyForm(forms.ModelForm):
     class Meta:
@@ -105,42 +168,61 @@ class CapitalCallDateForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields['date'].initial = timezone.now().date()
 
-class CapitalCallItemForm(forms.Form):
-    call_type = forms.ModelChoiceField(
-        queryset=CallType.objects.all(),
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        label='Call Type'
-    )
+class OperatingExpenseForm(forms.Form):
     allocation_rule = forms.ModelChoiceField(
         queryset=AllocationRule.objects.all(),
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        label='Allocation Rule'
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
-    description = forms.CharField(
-        max_length=50,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Description of capital call item'
-        }),
-        label='Description'
+    expense_type = forms.ModelChoiceField(
+        queryset=ExpenseType.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
     amount = forms.DecimalField(
-        max_digits=12,
+        max_digits=12, 
         decimal_places=2,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'step': '0.01',
-            'placeholder': 'Amount'
-        }),
-        label='Amount'
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Amount', 'step': '0.01'})
     )
 
-CapitalCallItemFormSet = formset_factory(
-    CapitalCallItemForm,
-    extra=3,
-    can_delete=True,
-    can_order=False
-)
+class InvestmentForm(forms.Form):
+    allocation_rule = forms.ModelChoiceField(
+        queryset=AllocationRule.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    investment = forms.ModelChoiceField(
+        queryset=Investment.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    amount = forms.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Amount', 'step': '0.01'})
+    )
+
+OperatingExpenseFormSet = forms.formset_factory(OperatingExpenseForm, extra=3, can_delete=True)
+InvestmentFormSet = forms.formset_factory(InvestmentForm, extra=3, can_delete=True)
+
+# forms.py
+from django import forms
+from .models import Investment
+
+class InvestmentFormAdmin(forms.ModelForm):  # <- Must inherit from ModelForm
+    class Meta:
+        model = Investment
+        fields = ['date', 'company', 'fund', 'instrument', 'committed_amount', 
+                 'invested_amount', 'realised_proceeds', 'valuation', 'IRR', 'MOIC']
+        
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'company': forms.Select(attrs={'class': 'form-select'}),
+            'fund': forms.Select(attrs={'class': 'form-select'}),
+            'instrument': forms.Select(attrs={'class': 'form-select'}),
+            'committed_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'invested_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'realised_proceeds': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'valuation': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'IRR': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.001'}),
+            'MOIC': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
 
 class ContactForm(forms.ModelForm):
     class Meta:

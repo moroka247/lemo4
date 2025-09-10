@@ -1,24 +1,136 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-
 {% block title %}
     Add Fund
 {% endblock title %}
 
 {% block content %}
-<div class="container col-md-10 offset-md-1 mt-3">
-    <h2 class="">Add New Fund</h2>
-    <hr class="">
-    <form action="" method="post" autocomplete="off">
-        {% csrf_token %}
-        {{ form | crispy }}
-        
-        <div class="col-md-6 mt-3">
-            <button type="submit" value="submit" class="btn btn-block btn-success btn-sm col-md-3"><i class="fas fa-save"></i>  Save</button>
-            <a href="{% url 'funds' %}" class="btn btn-secondary btn-sm btn-block btn-danger col-md-3"><i class="fas fa-danger"></i> Close</a> 
-        </div>    
-    </form>
+<div class="container-fluid investments-dashboard">
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-10 col-md-12">
+
+            <!-- Form Section -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card investment-form-card">
+                        <div class="card-header">
+                            <h2 class="card-title mb-0">New Fund Details</h2>
+                            <p class="text-muted mb-0">Create a new fund record</p>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                {{ form|crispy }}
+                                
+                                <div class="d-flex gap-2 mt-4">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save me-2"></i>Save Fund
+                                    </button>
+                                    <a href="{% url 'funds' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
+<style>
+.investments-dashboard {
+    padding: 20px 0;
+}
+
+.investment-form-card {
+    border: 1px solid #417a59;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.investment-form-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+.investment-form-card .card-header {
+    background: linear-gradient(120deg, #f8faf8 0%, #fff 100%);
+    border-bottom: 1px solid #eaecf4;
+    padding: 20px;
+}
+
+.investment-form-card .card-body {
+    padding: 30px;
+}
+
+/* Style crispy forms elements to match your theme */
+.control-label {
+    font-weight: 600;
+    color: #2e3a59;
+    margin-bottom: 8px;
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #417a59;
+    background-color: #f8f9fa;
+    padding: 10px 12px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #417a59;
+    box-shadow: 0 0 0 0.2rem rgba(65, 122, 89, 0.25);
+    outline: none;
+}
+
+.help-block {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 5px;
+}
+
+/* Button styles */
+.btn-success {
+    background-color: #417a59;
+    border-color: #417a59;
+}
+
+.btn-success:hover {
+    background-color: #35634a;
+    border-color: #35634a;
+}
+
+.btn-outline-secondary {
+    color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .investment-form-card .card-body {
+        padding: 20px;
+    }
+    
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 10px !important;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+}
+</style>
 {% endblock content %}

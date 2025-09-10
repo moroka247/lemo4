@@ -1,24 +1,252 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
-
 
 {% block title %}
-   Edit Investment
+Edit Investment - {{ object.company.name }}
 {% endblock title %}
 
 {% block content %}
-<div class="container col-md-10 offset-md-1 mt-3">
-    <h2 class="">Edit Investment</h2>
-    <hr class="">
-    <form action="" method="post" autocomplete="off">
-        {% csrf_token %}
-        {{ form | crispy }}
-        
-        <div class="col-md-6 mt-3">
-            <button type="submit" value="submit" class="btn btn-block btn-success btn-sm col-md-3"><i class="fas fa-save"></i>  Save</button>
-            <a href="{% url 'investments' %}" class="btn btn-secondary btn-sm btn-block btn-danger col-md-3"><i class="fas fa-danger"></i> Close</a> 
-        </div>    
-    </form>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">Edit Investment</h2>
+                    <p class="text-muted mb-0">Update investment details for {{ object.company.name }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'company_detail' pk=object.company.id %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Company
+                    </a>
+                </div>
+            </div>
+            <hr class="mt-3">
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.company.id_for_label }}" class="form-label">Company</label>
+                                    {{ form.company }}
+                                    {% if form.company.errors %}
+                                    <div class="text-danger">{{ form.company.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.fund.id_for_label }}" class="form-label">Fund</label>
+                                    {{ form.fund }}
+                                    {% if form.fund.errors %}
+                                    <div class="text-danger">{{ form.fund.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.instrument.id_for_label }}" class="form-label">Instrument</label>
+                                    {{ form.instrument }}
+                                    {% if form.instrument.errors %}
+                                    <div class="text-danger">{{ form.instrument.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.date.id_for_label }}" class="form-label">Date</label>
+                                    {{ form.date }}
+                                    {% if form.date.errors %}
+                                    <div class="text-danger">{{ form.date.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.committed_amount.id_for_label }}" class="form-label">Committed Amount</label>
+                                    {{ form.committed_amount }}
+                                    {% if form.committed_amount.errors %}
+                                    <div class="text-danger">{{ form.committed_amount.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.invested_amount.id_for_label }}" class="form-label">Invested Amount</label>
+                                    {{ form.invested_amount }}
+                                    {% if form.invested_amount.errors %}
+                                    <div class="text-danger">{{ form.invested_amount.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.realised_proceeds.id_for_label }}" class="form-label">Realised Proceeds</label>
+                                    {{ form.realised_proceeds }}
+                                    {% if form.realised_proceeds.errors %}
+                                    <div class="text-danger">{{ form.realised_proceeds.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.valuation.id_for_label }}" class="form-label">Valuation</label>
+                                    {{ form.valuation }}
+                                    {% if form.valuation.errors %}
+                                    <div class="text-danger">{{ form.valuation.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.IRR.id_for_label }}" class="form-label">IRR (%)</label>
+                                    {{ form.IRR }}
+                                    {% if form.IRR.errors %}
+                                    <div class="text-danger">{{ form.IRR.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.MOIC.id_for_label }}" class="form-label">MOIC</label>
+                                    {{ form.MOIC }}
+                                    {% if form.MOIC.errors %}
+                                    <div class="text-danger">{{ form.MOIC.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'company_detail' pk=object.company.id %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            <div>
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-save me-2"></i>Update Investment
+                                </button>
+                                <a href="{% url 'delete_investment' pk=object.id %}" class="btn btn-outline-danger">
+                                    <i class="fas fa-trash me-2"></i>Delete
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+.container-fluid {
+    padding: 20px 0;
+}
+
+.card {
+    border: 1px solid #417a59;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.card:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+.form-label {
+    font-weight: 500;
+    color: #2e3a59;
+    margin-bottom: 5px;
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #eaecf4;
+    padding: 10px 15px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #417a59;
+    box-shadow: 0 0 0 0.2rem rgba(65, 122, 89, 0.25);
+}
+
+.btn {
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: #417a59;
+    border-color: #417a59;
+}
+
+.btn-primary:hover {
+    background-color: #35674d;
+    border-color: #35674d;
+}
+
+.btn-outline-secondary {
+    border-color: #eaecf4;
+    color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+.text-danger {
+    font-size: 0.875rem;
+    margin-top: 5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 15px;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+    
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .d-flex.justify-content-between > div {
+        display: flex;
+        gap: 10px;
+    }
+}
+</style>
 
 {% endblock content %}

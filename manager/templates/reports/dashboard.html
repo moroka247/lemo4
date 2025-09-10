@@ -1,106 +1,401 @@
 {% extends "base.html" %}
+{% load custom_filters %}
+
+{% block title %}
+Investment Portfolio Dashboard
+{% endblock title %}
 
 {% block content %}
 
-<div class="container mx-auto px-4 py-6">
-  <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
-
-  <!-- Tile Grid Layout -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <!-- Total AUM Tile -->
-    <div class="p-6 bg-white shadow-lg rounded-lg">
-      <h2 class="text-lg font-semibold mb-2">Total Assets Under Management (AUM)</h2>
-      <p class="text-3xl font-bold text-blue-600">$1.5B</p>
+<div class="container-fluid dashboard">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">Portfolio Dashboard</h2>
+                    <p class="text-muted mb-0">Comprehensive overview of your investment portfolio</p>
+                </div>
+                <div class="btn-group">
+                    <a class="btn btn-success" href="{% url 'add_fund' %}">
+                        <i class="fas fa-plus me-2"></i>Add Fund
+                    </a>
+                    <a class="btn btn-primary" href="{% url 'add_investor' %}">
+                        <i class="fas fa-user-plus me-2"></i>Add Investor
+                    </a>
+                    <a class="btn btn-info" href="{% url 'add_investment' %}">
+                        <i class="fas fa-chart-line me-2"></i>Add Deal
+                    </a>
+                </div>
+            </div>
+            <hr class="mt-3">
+        </div>
     </div>
 
-    <!-- Number of Active Funds Tile -->
-    <div class="p-6 bg-white shadow-lg rounded-lg">
-      <h2 class="text-lg font-semibold mb-2">Number of Active Funds</h2>
-      <p class="text-3xl font-bold text-green-600">12</p>
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card summary-card">
+                <div class="card-body text-center">
+                    <div class="summary-icon funds-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="stat-value text-primary">{{ funds_count|default:0 }}</div>
+                        <div class="stat-label">Total Funds</div>
+                    </div>
+                    <a href="{% url 'funds' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card summary-card">
+                <div class="card-body text-center">
+                    <div class="summary-icon investors-icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="stat-value text-success">{{ investors_count|default:0 }}</div>
+                        <div class="stat-label">Total Investors</div>
+                    </div>
+                    <a href="{% url 'investors' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card summary-card">
+                <div class="card-body text-center">
+                    <div class="summary-icon investments-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="stat-value text-info">{{ investments_count|default:0 }}</div>
+                        <div class="stat-label">Total Deals</div>
+                    </div>
+                    <a href="{% url 'investments' %}" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card summary-card">
+                <div class="card-body text-center">
+                    <div class="summary-icon performance-icon">
+                        <i class="fas fa-trending-up"></i>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="stat-value text-warning">{{ average_irr|floatformat:2|default:"0.00" }}%</div>
+                        <div class="stat-label">Avg. IRR</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Total Commitments Tile -->
-    <div class="p-6 bg-white shadow-lg rounded-lg">
-      <h2 class="text-lg font-semibold mb-2">Total Commitments</h2>
-      <p class="text-3xl font-bold text-purple-600">$2.3B</p>
-    </div>
+    <!-- Main Dashboard Content -->
+    <div class="row">
+        <!-- Funds Summary -->
+        <div class="col-xl-6 col-lg-12 mb-4">
+            <div class="card dashboard-section">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Funds Overview</h5>
+                    <a href="{% url 'funds' %}" class="btn btn-sm btn-outline-success">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if funds_data %}
+                        {% for fund_data in funds_data|slice:":3" %}
+                        <div class="dashboard-item">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">{{ fund_data.fund.name }}</h6>
+                                <span class="badge bg-success">Active</span>
+                            </div>
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: {% widthratio fund_data.called_capital fund_data.committed_capital 100 %}%" 
+                                     aria-valuenow="{% widthratio fund_data.called_capital fund_data.committed_capital 100 %}" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">
+                                    {{ fund_data.fund.currency.symbol }}{{ fund_data.called_capital|floatformat:2 }} drawn
+                                </small>
+                                <small class="text-muted">
+                                    {{ fund_data.fund.currency.symbol }}{{ fund_data.committed_capital|floatformat:2 }} committed
+                                </small>
+                            </div>
+                        </div>
+                        {% if not forloop.last %}<hr>{% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-building fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No funds available</p>
+                            <a href="{% url 'add_fund' %}" class="btn btn-sm btn-success mt-2">
+                                <i class="fas fa-plus me-1"></i>Add Fund
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-    <!-- Fund Performance Chart Tile -->
-    <div class="p-6 bg-white shadow-lg rounded-lg col-span-1 sm:col-span-2 lg:col-span-3">
-      <h2 class="text-lg font-semibold mb-4">Fund Performance</h2>
-      <canvas id="fundPerformanceChart"></canvas>
-    </div>
+        <!-- Investors Summary -->
+        <div class="col-xl-6 col-lg-12 mb-4">
+            <div class="card dashboard-section">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Investors Overview</h5>
+                    <a href="{% url 'investors' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if investors_data %}
+                        {% for investor_data in investors_data|slice:":3" %}
+                        <div class="dashboard-item">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">{{ investor_data.investor.name }}</h6>
+                            </div>
+                            <div class="d-flex align-items-center text-muted mb-2">
+                                <i class="fas fa-user me-2 small"></i>
+                                <small>
+                                    {% if investor_data.primary_contact %}
+                                        {{ investor_data.primary_contact.name }} {{ investor_data.primary_contact.surname }}
+                                    {% else %}
+                                        No primary contact
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">{{ investor_data.investor.category }}</small>
+                                <small class="text-muted">{{ investor_data.funds_count|default:0 }} funds</small>
+                            </div>
+                        </div>
+                        {% if not forloop.last %}<hr>{% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-user-tie fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No investors available</p>
+                            <a href="{% url 'add_investor' %}" class="btn btn-sm btn-primary mt-2">
+                                <i class="fas fa-plus me-1"></i>Add Investor
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-    <!-- Investor Commitments Chart Tile -->
-    <div class="p-6 bg-white shadow-lg rounded-lg col-span-1 sm:col-span-2 lg:col-span-3">
-      <h2 class="text-lg font-semibold mb-4">Investor Commitments</h2>
-      <canvas id="investorCommitmentsChart"></canvas>
-    </div>
+        <!-- Investments Summary -->
+        <div class="col-xl-6 col-lg-12 mb-4">
+            <div class="card dashboard-section">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Recent Investments</h5>
+                    <a href="{% url 'investments' %}" class="btn btn-sm btn-outline-info">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if investments %}
+                        {% for investment in investments|slice:":3" %}
+                        <div class="dashboard-item">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">{{ investment.company }}</h6>
+                                <span class="badge bg-success">Performing</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <small class="text-muted">{{ investment.fund }}</small>
+                                <small class="text-muted">{{ investment.instrument }}</small>
+                            </div>
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar bg-info" role="progressbar" 
+                                     style="width: {% widthratio investment.invested_amount investment.committed_amount 100 %}%" 
+                                     aria-valuenow="{% widthratio investment.invested_amount investment.committed_amount 100 %}" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">
+                                    ${{ investment.invested_amount|floatformat:2 }} invested
+                                </small>
+                                <small class="text-muted">
+                                    ${{ investment.committed_amount|floatformat:2 }} committed
+                                </small>
+                            </div>
+                        </div>
+                        {% if not forloop.last %}<hr>{% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-line fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No investments available</p>
+                            <a href="{% url 'add_investment' %}" class="btn btn-sm btn-info mt-2">
+                                <i class="fas fa-plus me-1"></i>Add Deal
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-    <!-- Recent Activities Tile -->
-    <div class="p-6 bg-white shadow-lg rounded-lg col-span-1 sm:col-span-2 lg:col-span-1">
-      <h2 class="text-lg font-semibold mb-4">Recent Activities</h2>
-      <ul class="space-y-2">
-        <li class="text-gray-700">
-          <span class="font-bold">Capital Call Notice</span> issued for Fund ABC - $50M.
-          <span class="text-gray-500 text-sm block">2 hours ago</span>
-        </li>
-        <li class="text-gray-700">
-          <span class="font-bold">Investor Commitment</span> received from XYZ Investor - $20M.
-          <span class="text-gray-500 text-sm block">1 day ago</span>
-        </li>
-      </ul>
+        <!-- Performance Summary -->
+        <div class="col-xl-6 col-lg-12 mb-4">
+            <div class="card dashboard-section">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Portfolio Performance</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-4">
+                        <div class="col-6">
+                            <div class="performance-metric">
+                                <div class="metric-value text-success">
+                                    {{ total_committed|floatformat:2|default:"0.00" }}
+                                </div>
+                                <div class="metric-label">Total Committed</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="performance-metric">
+                                <div class="metric-value text-info">
+                                    {{ total_called|floatformat:2|default:"0.00" }}
+                                </div>
+                                <div class="metric-label">Total Called</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="performance-chart-placeholder mb-4">
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-bar fa-3x text-muted mb-2"></i>
+                            <p class="text-muted">Performance charts would be displayed here</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="#" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-download me-1"></i>Export Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <!-- Alerts & Notifications Tile -->
-    <div class="p-6 bg-white shadow-lg rounded-lg col-span-1 sm:col-span-2 lg:col-span-2">
-      <h2 class="text-lg font-semibold mb-4">Alerts & Notifications</h2>
-      <ul class="space-y-2">
-        <li class="text-red-600 font-bold">Alert:</li>
-        <p class="text-gray-700">Fund ABC is nearing its investment limit.</p>
-        <li class="text-yellow-600 font-bold">Reminder:</li>
-        <p class="text-gray-700">Quarterly report submission due in 5 days.</p>
-      </ul>
-    </div>
-  </div>
 </div>
 
-<!-- Chart.js Placeholder Scripts -->
-<script>
-  const ctx1 = document.getElementById('fundPerformanceChart').getContext('2d');
-  const ctx2 = document.getElementById('investorCommitmentsChart').getContext('2d');
+<style>
+.dashboard {
+    padding: 20px 0;
+}
 
-  // Placeholder Chart 1
-  new Chart(ctx1, {
-    type: 'line',
-    data: {
-      labels: ['January', 'February', 'March', 'April'],
-      datasets: [{
-        label: 'Fund Performance',
-        data: [10, 20, 30, 40],
-        borderColor: 'blue',
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-    }
-  });
+.summary-card {
+    border: 1px solid #eaecf4;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    transition: transform 0.3s, box-shadow 0.3s;
+    height: 100%;
+}
 
-  // Placeholder Chart 2
-  new Chart(ctx2, {
-    type: 'bar',
-    data: {
-      labels: ['Investor A', 'Investor B', 'Investor C'],
-      datasets: [{
-        label: 'Commitments',
-        data: [500, 300, 400],
-        backgroundColor: ['#4CAF50', '#FF9800', '#2196F3'],
-      }]
-    },
-    options: {
-      responsive: true,
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.summary-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    font-size: 1.5rem;
+}
+
+.funds-icon {
+    background: linear-gradient(135deg, rgba(79, 118, 95, 0.15) 0%, rgba(65, 122, 89, 0.15) 100%);
+    color: #417a59;
+}
+
+.investors-icon {
+    background: linear-gradient(135deg, rgba(65, 122, 89, 0.15) 0%, rgba(53, 101, 74, 0.15) 100%);
+    color: #35654a;
+}
+
+.investments-icon {
+    background: linear-gradient(135deg, rgba(78, 115, 223, 0.15) 0%, rgba(34, 74, 190, 0.15) 100%);
+    color: #224abe;
+}
+
+.performance-icon {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(220, 165, 0, 0.15) 100%);
+    color: #ffc107;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.dashboard-section {
+    border: 1px solid #eaecf4;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    height: 100%;
+}
+
+.dashboard-section .card-header {
+    background: linear-gradient(120deg, #f8faf8 0%, #fff 100%);
+    border-bottom: 1px solid #eaecf4;
+}
+
+.dashboard-item {
+    padding: 10px 0;
+}
+
+.performance-metric {
+    padding: 10px 0;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.metric-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.performance-chart-placeholder {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px dashed #dee2e6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .stat-value {
+        font-size: 1.5rem;
     }
-  });
-</script>
-{% endblock %}
+    
+    .summary-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.summary-card, .dashboard-section {
+    animation: fadeIn 0.5s ease-out;
+}
+</style>
+
+{% endblock content %}

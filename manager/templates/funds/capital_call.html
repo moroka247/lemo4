@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 {% load custom_filters %}
+{% load static %}
 
 {% block title %}Capital Call - {{ fund.name }}{% endblock %}
 
@@ -88,7 +89,7 @@
             <form method="post" id="capital-call-form">
                 {% csrf_token %}
                 
-                <!-- Date Selection - SINGLE DATE PICKER -->
+                <!-- Date Selection -->
                 <div class="row mb-4">
                     <div class="col-md-4">
                         <label for="call_date" class="form-label">Call Date</label>
@@ -102,7 +103,7 @@
                     </div>
                 </div>
 
-                <!-- Unpaid Management Fees Section -->
+                <!-- Management Fees Section -->
                 {% if unpaid_management_fees %}
                 <div class="card mb-4">
                     <div class="card-header">
@@ -155,43 +156,82 @@
                         </div>
                     </div>
                 </div>
-                {% endif %} 
+                {% endif %}
 
-                <!-- Multiple Items Formset -->
-                <h6>Capital Call Items</h6>
-                {{ item_formset.management_form }}
-                
-                <table class="table table-sm" id="capital-call-table">
-                    <thead>
-                        <tr>
-                            <th>Call Type</th>
-                            <th>Allocation Rule</th>
-                            <th>Description</th>
-                            <th>Amount</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for form in item_formset %}
-                        <tr class="capital-call-item">
-                            <td>{{ form.call_type }}</td>
-                            <td>{{ form.allocation_rule }}</td>
-                            <td>{{ form.description }}</td>
-                            <td>{{ form.amount }}</td>
-                            <td>
-                                {% if item_formset.can_delete %}
-                                {{ form.DELETE }}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                
-                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-item">
-                    <i class="fas fa-plus"></i> Add Another Item
-                </button>
-                
+                <!-- Operating Expenses Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">Operating Expenses</h6>
+                    </div>
+                    <div class="card-body">
+                        {{ operating_expense_formset.management_form }}
+                        <table class="table table-sm" id="operating-expenses-table">
+                            <thead>
+                                <tr>
+                                    <th>Allocation Rule</th>
+                                    <th>Expense Type</th>
+                                    <th>Amount ($)</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for form in operating_expense_formset %}
+                                <tr class="operating-expense-item">
+                                    <td>{{ form.allocation_rule }}</td>
+                                    <td>{{ form.expense_type }}</td>
+                                    <td>{{ form.amount }}</td>
+                                    <td>
+                                        {% if operating_expense_formset.can_delete %}
+                                        {{ form.DELETE }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-operating-expense">
+                            <i class="fas fa-plus"></i> Add Another Expense
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Investments Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">Investments</h6>
+                    </div>
+                    <div class="card-body">
+                        {{ investment_formset.management_form }}
+                        <table class="table table-sm" id="investments-table">
+                            <thead>
+                                <tr>
+                                    <th>Allocation Rule</th>
+                                    <th>Investment</th>
+                                    <th>Amount ($)</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for form in investment_formset %}
+                                <tr class="investment-item">
+                                    <td>{{ form.allocation_rule }}</td>
+                                    <td>{{ form.investment }}</td>
+                                    <td>{{ form.amount }}</td>
+                                    <td>
+                                        {% if investment_formset.can_delete %}
+                                        {{ form.DELETE }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-investment">
+                            <i class="fas fa-plus"></i> Add Another Investment
+                        </button>
+                    </div>
+                </div>
+
                 <div class="mt-4">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-paper-plane"></i> Process Capital Call Batch
@@ -210,7 +250,7 @@
             {% if notice_calls %}
                 {% for notice_code, notice_data in notice_calls.items %}
                 <div class="mb-4">
-                    <h6>Notice: {{ notice_code }} ({{ notice_data.notice_number.date|date:"M d, Y" }}) - Total: {{ notice_data.total_amount|floatformat:2 }}</h6>
+                    <h6>Notice: {{ notice_code }} ({{ notice_data.notice_number.date|date:"M d, Y" }}) - Total: ${{ notice_data.total_amount|floatformat:2 }}</h6>
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm">
                             <thead>
@@ -230,7 +270,7 @@
                                     <td>{{ desc_data.description }}</td>
                                     <td>{{ desc_data.call_type.name }}</td>
                                     <td>{{ desc_data.allocation_rule.name }}</td>
-                                    <td class="text-end">{{ desc_data.total|floatformat:2 }}</td>
+                                    <td class="text-end">${{ desc_data.total|floatformat:2 }}</td>
                                     {% for investor in investor_data %}
                                     <td class="text-end">
                                         {{ desc_data.investor_amounts|get_item:investor.investor.id|default:"-"|floatformat:2 }}
@@ -242,7 +282,7 @@
                                 <!-- TOTAL ROW -->
                                 <tr class="table-success fw-bold">
                                     <td colspan="3" class="text-left">Total</td>
-                                    <td class="text-end">{{ notice_data.total_amount|floatformat:2 }}</td>
+                                    <td class="text-end">${{ notice_data.total_amount|floatformat:2 }}</td>
                                     {% for investor in investor_data %}
                                     <td class="text-end">
                                         {% with investor_id=investor.investor.id %}
@@ -263,31 +303,23 @@
     </div>
 
 </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const addButton = document.getElementById('add-item');
-    const tableBody = document.querySelector('#capital-call-table tbody');
-    const totalForms = document.getElementById('id_capital_call_items-TOTAL_FORMS');
-    let formCount = parseInt(totalForms.value);
+    // Operating Expenses Formset
+    const addOperatingExpenseBtn = document.getElementById('add-operating-expense');
+    const operatingExpenseTable = document.querySelector('#operating-expenses-table tbody');
+    const operatingExpenseTotalForms = document.getElementById('id_operating_expenses-TOTAL_FORMS');
+    let operatingExpenseCount = parseInt(operatingExpenseTotalForms.value);
     
-    addButton.addEventListener('click', function() {
+    addOperatingExpenseBtn.addEventListener('click', function() {
         const newRow = document.createElement('tr');
-        newRow.className = 'capital-call-item';
+        newRow.className = 'operating-expense-item';
         newRow.innerHTML = `
             <td>
-                <select name="capital_call_items-${formCount}-call_type" class="form-control" required>
-                    <option value="">---------</option>
-                    {% for call_type in call_types %}
-                    <option value="{{ call_type.id }}">{{ call_type.name }}</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td>
-                <select name="capital_call_items-${formCount}-allocation_rule" class="form-control" required>
+                <select name="operating_expenses-${operatingExpenseCount}-allocation_rule" class="form-control" required>
                     <option value="">---------</option>
                     {% for rule in allocation_rules %}
                     <option value="{{ rule.id }}">{{ rule.name }}</option>
@@ -295,11 +327,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 </select>
             </td>
             <td>
-                <input type="text" name="capital_call_items-${formCount}-description" 
-                       class="form-control" placeholder="Description" required>
+                <select name="operating_expenses-${operatingExpenseCount}-expense_type" class="form-control" required>
+                    <option value="">---------</option>
+                    {% for expense_type in expense_types %}
+                    <option value="{{ expense_type.id }}">{{ expense_type.name }}</option>
+                    {% endfor %}
+                </select>
             </td>
             <td>
-                <input type="number" name="capital_call_items-${formCount}-amount" 
+                <input type="number" name="operating_expenses-${operatingExpenseCount}-amount" 
                        class="form-control" step="0.01" placeholder="Amount" required>
             </td>
             <td>
@@ -308,15 +344,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 </button>
             </td>
         `;
-        tableBody.appendChild(newRow);
-        formCount++;
-        totalForms.value = formCount;
+        operatingExpenseTable.appendChild(newRow);
+        operatingExpenseCount++;
+        operatingExpenseTotalForms.value = operatingExpenseCount;
     });
+
+    // Investments Formset
+    const addInvestmentBtn = document.getElementById('add-investment');
+    const investmentTable = document.querySelector('#investments-table tbody');
+    const investmentTotalForms = document.getElementById('id_investments-TOTAL_FORMS');
+    let investmentCount = parseInt(investmentTotalForms.value);
     
-    tableBody.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-item')) {
-            e.target.closest('tr').remove();
-        }
+    addInvestmentBtn.addEventListener('click', function() {
+        const newRow = document.createElement('tr');
+        newRow.className = 'investment-item';
+        newRow.innerHTML = `
+            <td>
+                <select name="investments-${investmentCount}-allocation_rule" class="form-control" required>
+                    <option value="">---------</option>
+                    {% for rule in allocation_rules %}
+                    <option value="{{ rule.id }}">{{ rule.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <select name="investments-${investmentCount}-investment" class="form-control" required>
+                    <option value="">---------</option>
+                    {% for investment in investments %}
+                    <option value="{{ investment.id }}">{{ investment.company.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <input type="number" name="investments-${investmentCount}-amount" 
+                       class="form-control" step="0.01" placeholder="Amount" required>
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-danger remove-item">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        investmentTable.appendChild(newRow);
+        investmentCount++;
+        investmentTotalForms.value = investmentCount;
+    });
+
+    // Remove item functionality
+    document.querySelectorAll('table tbody').forEach(table => {
+        table.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-item')) {
+                e.target.closest('tr').remove();
+            }
+        });
     });
 });
 </script>

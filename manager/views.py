@@ -9,7 +9,6 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.shortcuts import render
 from django.urls import reverse_lazy
-from django.db.models import Sum, Max
 from django.db.models.functions import ExtractYear, ExtractMonth
 from django.views.generic import View, ListView, DetailView, CreateView, UpdateView, DeleteView , TemplateView, FormView
 from django_filters.rest_framework import DjangoFilterBackend
@@ -24,7 +23,7 @@ import requests
 import json
 from decimal import Decimal, InvalidOperation
 import pandas as pd
-from django.db.models import Prefetch, Count, Sum, Max, F, Q
+from django.db.models import Prefetch, Count, Avg, Sum, Max, F, Q
 from django.core.paginator import Paginator
 from django.shortcuts import render
 from django.db import IntegrityError, transaction
@@ -145,6 +144,14 @@ class AllocationRuleViewSet(ModelViewSet):
 class FundParameterViewSet(ModelViewSet):
     queryset = FundParameter.objects.all()
     serializer_class = FundParameterSerializer
+
+class ExpenseCategoryViewSet(ModelViewSet):
+    queryset = ExpenseCategory.objects.all()
+    serializer_class = ExcpenseCategorySerializer
+
+class ExpenseTypeViewSet(ModelViewSet):
+    queryset = ExpenseType.objects.all()
+    serializer_class = ExpenseTypeSerializer
 
 # Home Page and Authentication
 
@@ -758,14 +765,23 @@ class CapitalCallView(TemplateView):
             capital_call__isnull=True
         ).order_by('period_end_date')
         
-        # Get management fee types for the form
-        management_fee_call_type = CallType.objects.filter(name__icontains='management').first()
+        # Get call types for each section
+        management_call_type = CallType.objects.filter(name__icontains='management').first()
+        operating_expense_call_type = CallType.objects.filter(name__icontains='Operating Expenses').first()
+        organizational_expense_call_type = CallType.objects.filter(name__icontains='Organizational Expenses').first()
+        investment_call_type = CallType.objects.filter(name__icontains='Investment').first()
         
-        # Forms and other context
-        context['date_form'] = CapitalCallDateForm()
-        context['item_formset'] = CapitalCallItemFormSet(prefix='capital_call_items')
-        context['call_types'] = CallType.objects.all()
-        context['allocation_rules'] = AllocationRule.objects.all()
+        # Get expense types and investments
+        expense_types = ExpenseType.objects.all()
+        investments = Investment.objects.filter(fund=fund)
+        
+        # Get formsets
+        operating_expense_formset = OperatingExpenseFormSet(prefix='operating_expenses')
+        investment_formset = InvestmentFormSet(prefix='investments')
+        
+        # Filter investments for this fund
+        for form in investment_formset:
+            form.fields['investment'].queryset = investments
         
         context.update({
             'fund': fund,
@@ -775,7 +791,15 @@ class CapitalCallView(TemplateView):
             'total_drawn': total_drawn,
             'total_undrawn': total_committed - total_drawn,
             'unpaid_management_fees': unpaid_management_fees,
-            'management_fee_call_type': management_fee_call_type,
+            'management_call_type': management_call_type,
+            'operating_expense_call_type': operating_expense_call_type,
+            'organizational_expense_call_type': organizational_expense_call_type,
+            'investment_call_type': investment_call_type,
+            'expense_types': expense_types,
+            'investments': investments,
+            'operating_expense_formset': operating_expense_formset,
+            'investment_formset': investment_formset,
+            'allocation_rules': AllocationRule.objects.all(),
         })
         
         return context
@@ -783,37 +807,64 @@ class CapitalCallView(TemplateView):
     def post(self, request, *args, **kwargs):
         fund = get_object_or_404(Fund, pk=self.kwargs['pk'])
         
-        # Handle integrated capital call form
-        item_formset = CapitalCallItemFormSet(
+        # Get call types
+        operating_expense_call_type = CallType.objects.filter(name__icontains='Operating Expenses').first()
+        investment_call_type = CallType.objects.filter(name__icontains='Investment').first()
+        
+        # Handle management fees
+        selected_fee_ids = request.POST.getlist('selected_management_fees')
+        total_management_fees = Decimal('0')
+        
+        # Handle operating expenses
+        operating_expense_formset = OperatingExpenseFormSet(
             request.POST, 
-            prefix='capital_call_items'
+            prefix='operating_expenses'
         )
         
-        if item_formset.is_valid():
-            call_date_str = request.POST.get('call_date')
-            due_date_str = request.POST.get('due_date')
-            
-            if not call_date_str or not due_date_str:
-                messages.error(request, 'Please provide both call date and due date.')
-                context = self.get_context_data()
-                context['item_formset'] = item_formset
-                return self.render_to_response(context)
-            
+        # Handle investments
+        investment_formset = InvestmentFormSet(
+            request.POST, 
+            prefix='investments'
+        )
+        
+        # Set the investment queryset for validation
+        investments = Investment.objects.filter(fund=fund)
+        for form in investment_formset:
+            form.fields['investment'].queryset = investments
+        
+        # Validate date fields first
+        call_date_str = request.POST.get('call_date')
+        due_date_str = request.POST.get('due_date')
+        
+        if not call_date_str or not due_date_str:
+            messages.error(request, 'Please provide both call date and due date.')
+            context = self.get_context_data()
+            context['operating_expense_formset'] = operating_expense_formset
+            context['investment_formset'] = investment_formset
+            return self.render_to_response(context)
+        
+        try:
             call_date = datetime.strptime(call_date_str, '%Y-%m-%d').date()
             due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-            
-            # Create a notice for this batch (notice_code will be auto-generated per fund)
+        except ValueError:
+            messages.error(request, 'Please provide valid dates.')
+            context = self.get_context_data()
+            context['operating_expense_formset'] = operating_expense_formset
+            context['investment_formset'] = investment_formset
+            return self.render_to_response(context)
+        
+        # Check if forms are valid
+        forms_valid = operating_expense_formset.is_valid() and investment_formset.is_valid()
+        
+        if forms_valid:
+            # Create a notice for this batch
             notice = NoticeNumber.objects.create(
                 date=call_date,
                 fund=fund,
-                investor=None  # Batch notice
+                investor=None
             )
             
-            # Process management fees if any are selected (EXCLUDING General Partners)
-            selected_fee_ids = request.POST.getlist('selected_management_fees')
-            total_management_fees = Decimal('0')
-            management_fee_capital_calls = []  # Store created capital calls for management fees
-            
+            # Process management fees if any are selected
             for fee_id in selected_fee_ids:
                 try:
                     management_fee = ManagementFees.objects.get(
@@ -823,101 +874,144 @@ class CapitalCallView(TemplateView):
                         capital_call__isnull=True
                     )
                     
-                    # Create capital calls for management fee and get the created capital calls
+                    # Create capital calls for management fee
                     created_calls = self.create_management_fee_capital_call(fund, management_fee, notice, due_date)
                     
                     if created_calls:
-                        # Link the management fee to the first capital call (they all reference the same fee)
-                        management_fee.capital_call = created_calls[0]  # Link to first capital call
+                        # Link the management fee to the first capital call
+                        management_fee.capital_call = created_calls[0]
                         management_fee.save()
                         total_management_fees += management_fee.gross_fee_amount
-                        management_fee_capital_calls.extend(created_calls)
                     
                 except ManagementFees.DoesNotExist:
                     continue
             
-            # Process regular capital call items (INCLUDING General Partners)
-            for form in item_formset:
+            # Process operating expenses
+            for form in operating_expense_formset:
                 if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-                    call_type = form.cleaned_data['call_type']
                     allocation_rule = form.cleaned_data['allocation_rule']
-                    description = form.cleaned_data['description']
+                    expense_type = form.cleaned_data['expense_type']
                     total_amount = form.cleaned_data['amount']
                     
-                    # Get investor commitments and totals (INCLUDING General Partners)
-                    investor_commitments = CommittedCapital.objects.filter(fund=fund)
-                    total_committed = investor_commitments.aggregate(
-                        Sum('amount')
-                    )['amount__sum'] or Decimal('0')
+                    description = f"{expense_type.name} - {expense_type.category.name}"
                     
-                    # Get drawn amounts before this date (INCLUDING General Partners)
-                    drawn_before = CapitalCall.objects.filter(
-                        fund=fund, 
-                        date__lt=call_date
-                    ).values('investor').annotate(
-                        total_drawn=Sum('amount')
+                    # Create capital calls for each investor
+                    self.create_capital_calls_for_item(
+                        fund, notice, call_date, due_date, 
+                        operating_expense_call_type, allocation_rule, description, total_amount
                     )
-                    drawn_dict = {item['investor']: item['total_drawn'] for item in drawn_before}
-                    total_drawn_before = sum(drawn_dict.values(), Decimal('0'))
+            
+            # Process investments
+            for form in investment_formset:
+                if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                    allocation_rule = form.cleaned_data['allocation_rule']
+                    investment = form.cleaned_data['investment']
+                    total_amount = form.cleaned_data['amount']
                     
-                    # Create capital calls for each investor (INCLUDING General Partners)
-                    for commitment in investor_commitments:
-                        investor = commitment.investor
-                        committed_amount = commitment.amount
-                        drawn_amount = drawn_dict.get(investor.id, Decimal('0'))
-                        
-                        # Allocation logic
-                        if allocation_rule.name == 'Committed Capital':
-                            investor_share = (committed_amount / total_committed) * total_amount
-                        elif allocation_rule.name == 'Undrawn Commitment':
-                            undrawn_amount = committed_amount - drawn_amount
-                            total_undrawn = total_committed - total_drawn_before
-                            investor_share = (undrawn_amount / total_undrawn) * total_amount if total_undrawn > 0 else Decimal('0')
-                        else:
-                            investor_share = Decimal('0')
-                        
-                        if investor_share > 0:
-                            CapitalCall.objects.create(
-                                notice_number=notice,
-                                fund=fund,
-                                investor=investor,
-                                date=call_date,
-                                due_date=due_date,
-                                call_type=call_type,
-                                allocation_rule=allocation_rule,
-                                description=description,
-                                amount=investor_share
-                            )
+                    description = f"Investment: {investment.company.name}"
+                    
+                    # Create capital calls for each investor
+                    capital_calls = self.create_capital_calls_for_item(
+                        fund, notice, call_date, due_date, 
+                        investment_call_type, allocation_rule, description, total_amount
+                    )
+                    
+                    # Create investment allocation records
+                    self.create_investment_allocations(investment, capital_calls)
             
             # Success message
+            success_msg = f'Capital call batch {notice.notice_code} created successfully!'
             if total_management_fees > 0:
-                messages.success(
-                    request, 
-                    f'Capital call batch {notice.notice_code} created successfully! '
-                    f'Including ${total_management_fees:,.2f} in management fees.'
-                )
-            else:
-                messages.success(request, f'Capital call batch {notice.notice_code} created successfully!')
+                success_msg += f' Including ${total_management_fees:,.2f} in management fees.'
             
+            messages.success(request, success_msg)
             return redirect('capital_call', pk=fund.pk)
         
         # If forms are invalid
         messages.error(request, 'Please correct the errors below.')
         context = self.get_context_data()
-        context['item_formset'] = item_formset
+        context['operating_expense_formset'] = operating_expense_formset
+        context['investment_formset'] = investment_formset
         return self.render_to_response(context)
-
+    
+    def create_capital_calls_for_item(self, fund, notice, call_date, due_date, call_type, allocation_rule, description, total_amount):
+        """Helper method to create capital calls for an item"""
+        investor_commitments = CommittedCapital.objects.filter(fund=fund)
+        total_committed = investor_commitments.aggregate(Sum('amount'))['amount__sum'] or Decimal('0')
+        
+        drawn_before = CapitalCall.objects.filter(
+            fund=fund, 
+            date__lt=call_date
+        ).values('investor').annotate(total_drawn=Sum('amount'))
+        drawn_dict = {item['investor']: item['total_drawn'] for item in drawn_before}
+        total_drawn_before = sum(drawn_dict.values(), Decimal('0'))
+        
+        capital_calls = []
+        
+        for commitment in investor_commitments:
+            investor = commitment.investor
+            committed_amount = commitment.amount
+            drawn_amount = drawn_dict.get(investor.id, Decimal('0'))
+            
+            # Allocation logic
+            if allocation_rule.name == 'Committed Capital':
+                investor_share = (committed_amount / total_committed) * total_amount
+            elif allocation_rule.name == 'Undrawn Commitment':
+                undrawn_amount = committed_amount - drawn_amount
+                total_undrawn = total_committed - total_drawn_before
+                investor_share = (undrawn_amount / total_undrawn) * total_amount if total_undrawn > 0 else Decimal('0')
+            else:
+                investor_share = Decimal('0')
+            
+            if investor_share > 0:
+                capital_call = CapitalCall.objects.create(
+                    notice_number=notice,
+                    fund=fund,
+                    investor=investor,
+                    date=call_date,
+                    due_date=due_date,
+                    call_type=call_type,
+                    allocation_rule=allocation_rule,
+                    description=description,
+                    amount=investor_share
+                )
+                capital_calls.append(capital_call)
+        
+        return capital_calls
+    
+    def create_investment_allocations(self, investment, capital_calls):
+        """Create investment allocation records"""
+        for capital_call in capital_calls:
+            # Calculate allocation percentage based on investor's committed capital
+            investor_commitment = CommittedCapital.objects.filter(
+                fund=investment.fund,
+                investor=capital_call.investor
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            
+            total_committed = CommittedCapital.objects.filter(
+                fund=investment.fund
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            
+            if total_committed > 0:
+                allocation_percentage = investor_commitment / total_committed
+                
+                InvestmentAllocation.objects.create(
+                    investment=investment,
+                    investor=capital_call.investor,
+                    allocated_amount=capital_call.amount,
+                    allocation_percentage=allocation_percentage
+                )
+    
     def create_management_fee_capital_call(self, fund, management_fee, notice, due_date):
-        """Create capital calls for a management fee across all investors (excluding General Partners) and return the created calls"""
-        # Get management fee call type
+        """Create capital calls for a management fee across all investors (excluding General Partners)"""
         management_call_type = CallType.objects.filter(name__icontains='management').first()
         if not management_call_type:
             management_call_type = CallType.objects.create(
                 name='Management Fee',
+                category='FEE',
                 description='Regular management fee charge'
             )
         
-        # Get allocation rule (typically Committed Capital for management fees)
         allocation_rule = AllocationRule.objects.filter(name='Committed Capital').first()
         if not allocation_rule:
             allocation_rule = AllocationRule.objects.create(
@@ -925,36 +1019,24 @@ class CapitalCallView(TemplateView):
                 description='Allocation based on committed capital percentage'
             )
         
-        # Get total commitments for the fund, excluding General Partners (for management fees)
+        # Get total commitments for the fund, excluding General Partners
         try:
             gp_type = InvestorType.objects.get(category="General Partner")
-            
-            total_committed = CommittedCapital.objects.filter(fund=fund).exclude(
-                investor__category=gp_type  # Exclude General Partners
-            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
-            
-            # Get investor commitments, excluding General Partners (for management fees)
             investor_commitments = CommittedCapital.objects.filter(fund=fund).exclude(
-                investor__category=gp_type  # Exclude General Partners
+                investor__category=gp_type
             )
-            
+            total_committed = investor_commitments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
         except InvestorType.DoesNotExist:
-            # If General Partner type doesn't exist, include all investors
-            total_committed = CommittedCapital.objects.filter(fund=fund).aggregate(
-                total=Sum('amount')
-            )['total'] or Decimal('0')
-            
             investor_commitments = CommittedCapital.objects.filter(fund=fund)
+            total_committed = investor_commitments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
         
         if total_committed == 0:
             return []
         
         created_calls = []
-        
-        # Use the total fee amount (including VAT if applicable)
         fee_amount_to_allocate = management_fee.total_fee_amount
 
-        # Create capital calls for each investor (excluding General Partners for management fees only)
+        # Create capital calls for each investor (excluding General Partners for management fees)
         for commitment in investor_commitments:
             investor = commitment.investor
             investor_share = (commitment.amount / total_committed) * fee_amount_to_allocate
@@ -1516,6 +1598,223 @@ class DeleteInvestor(DeleteView):
     template_name = "investors/confirm_delete.html"
     success_url = reverse_lazy('investors')
 
+# Investment Portfolio Administration
+
+class InvestmentsDashboard(LoginRequiredMixin, ListView):
+    model = Company
+    template_name = 'investments/investments.html'
+    context_object_name = 'companies_data'
+    
+    def get_queryset(self):
+        # Get search query
+        search_query = self.request.GET.get('q', '')
+        
+        # Get only companies that have investments (using the reverse relationship)
+        companies = Company.objects.filter(
+            investment__isnull=False
+        ).distinct()
+        
+        if search_query:
+            companies = companies.filter(
+                Q(name__icontains=search_query) |
+                Q(industry__name__icontains=search_query) |
+                Q(country__name__icontains=search_query) |
+                Q(investment__fund__name__icontains=search_query) |
+                Q(investment__instrument__name__icontains=search_query)
+            ).distinct()
+        
+        # Prefetch related investments with their related data
+        companies = companies.prefetch_related(
+            Prefetch(
+                'investment_set',
+                queryset=Investment.objects.select_related('fund', 'instrument')
+            )
+        ).order_by('name')
+        
+        # Create a list of company data with aggregated investment information
+        companies_data = []
+        for company in companies:
+            investments = company.investment_set.all()
+            
+            # Calculate totals for this company
+            total_committed = sum(inv.committed_amount for inv in investments)
+            total_invested = sum(inv.invested_amount for inv in investments)
+            
+            # Get unique funds and instruments
+            funds = list(set(inv.fund.name for inv in investments))
+            instruments = list(set(inv.instrument.name for inv in investments))
+            
+            companies_data.append({
+                'company': company,
+                'investments': investments,
+                'total_committed': total_committed,
+                'total_invested': total_invested,
+                'funds': funds,
+                'instruments': instruments,
+                'investment_count': len(investments),
+            })
+        
+        return companies_data
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get all investments for summary statistics
+        investments = Investment.objects.all()
+        total_committed = investments.aggregate(Sum('committed_amount'))['committed_amount__sum'] or 0
+        total_invested = investments.aggregate(Sum('invested_amount'))['invested_amount__sum'] or 0
+        
+        # Calculate investment completion percentage
+        investment_completion = 0
+        if total_committed > 0:
+            investment_completion = (total_invested / total_committed) * 100
+        
+        context['total_committed'] = total_committed
+        context['total_invested'] = total_invested
+        context['investment_completion'] = investment_completion
+        context['search_query'] = self.request.GET.get('q', '')
+        
+        return context
+
+class InvestmentDetail(LoginRequiredMixin, DetailView):
+    model = Company
+    template_name = 'investments/investment_overview.html'
+    context_object_name = 'company'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        company = self.object
+        
+        # Get all investments for this company
+        investments = Investment.objects.filter(company=company).select_related(
+            'fund', 'instrument'
+        )
+        
+        # Calculate totals
+        total_committed = investments.aggregate(Sum('committed_amount'))['committed_amount__sum'] or 0
+        total_invested = investments.aggregate(Sum('invested_amount'))['invested_amount__sum'] or 0
+        total_realised = investments.aggregate(Sum('realised_proceeds'))['realised_proceeds__sum'] or 0
+        
+        # Get unique funds and instruments
+        funds = list(set(inv.fund for inv in investments))
+        instruments = list(set(inv.instrument for inv in investments))
+        
+        # Get valuations for this company's investments
+        valuations = Valuation.objects.filter(
+            investment__in=investments
+        ).select_related('investment').order_by('-valuation_date')
+        
+        context.update({
+            'investments': investments,
+            'total_committed': total_committed,
+            'total_invested': total_invested,
+            'total_realised': total_realised,
+            'funds': funds,
+            'instruments': instruments,
+            'investment_count': investments.count(),
+            'valuations': valuations,
+        })
+        
+        return context
+
+class AddInvestment(CreateView):
+    model = Investment
+    form_class = InvestmentFormAdmin
+    template_name = 'investments/add_investment.html'
+    
+    def get_initial(self):
+        """Pre-fill the company field if provided in URL"""
+        initial = super().get_initial()
+        company_id = self.request.GET.get('company')
+        if company_id:
+            try:
+                company = Company.objects.get(id=company_id)
+                initial['company'] = company
+            except Company.DoesNotExist:
+                pass
+        return initial
+    
+    def form_valid(self, form):
+        """Save the investment and redirect to company detail"""
+        self.object = form.save()
+        messages.success(self.request, f'Investment added successfully for {self.object.company.name}')
+        return redirect('company_detail', pk=self.object.company.id)
+    
+    def get_success_url(self):
+        """Fallback URL if something goes wrong with redirect"""
+        return reverse_lazy('investments_dashboard')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add company to context for the template
+        company_id = self.request.GET.get('company')
+        if company_id:
+            try:
+                context['company'] = Company.objects.get(id=company_id)
+            except Company.DoesNotExist:
+                pass
+        return context
+
+class EditInvestment(UpdateView):
+    model = Investment
+    form_class = InvestmentFormAdmin
+    template_name = 'investments/edit_investment.html'
+    pk_url_kwarg = 'pk'
+    
+    def form_valid(self, form):
+        """Save the investment and redirect to company detail"""
+        self.object = form.save()
+        messages.success(self.request, f'Investment updated successfully for {self.object.company.name}')
+        return redirect('company_detail', pk=self.object.company.id)
+    
+    def get_success_url(self):
+        """Fallback URL if something goes wrong with redirect"""
+        return reverse_lazy('investments_dashboard')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['company'] = self.object.company
+        return context
+
+class DeleteInvestment(DeleteView):
+    model = Investment
+    pk_url_kwarg = 'pk'
+    template_name = "investments/confirm_delete.html"
+    
+    def delete(self, request, *args, **kwargs):
+        """Store company ID before deletion for redirect"""
+        self.object = self.get_object()
+        company_id = self.object.company.id
+        success_url = reverse_lazy('company_detail', kwargs={'pk': company_id})
+        self.object.delete()
+        messages.success(request, 'Investment deleted successfully')
+        return redirect(success_url)
+    
+    def get_success_url(self):
+        """Fallback URL if something goes wrong with redirect"""
+        return reverse_lazy('investments_dashboard')
+
+class EditCompany(UpdateView):
+    model = Company
+    form_class = CompanyForm
+    template_name = 'companies/edit_company.html'
+    pk_url_kwarg = 'pk'
+    
+    def form_valid(self, form):
+        """Save the company and redirect to company detail"""
+        self.object = form.save()
+        messages.success(self.request, f'{self.object.name} updated successfully')
+        return redirect('company_detail', pk=self.object.id)
+    
+    def get_success_url(self):
+        """Fallback URL if something goes wrong with redirect"""
+        return reverse_lazy('investments_dashboard')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['return_url'] = reverse('company_detail', kwargs={'pk': self.object.id})
+        return context
+
 
 # Investments Administration
 
@@ -1524,8 +1823,7 @@ class InvesmentsList(LoginRequiredMixin, ListView):
     template_name = 'investments/investments2.html'
     context_object_name = 'investments'
 
-
-class InvestmentDetail(DetailView):
+class InvestmentDetail1(DetailView):
     model = Investment
     template_name = 'investments/investment_overview2.html'
     context_object_name = 'investment'
@@ -1535,23 +1833,24 @@ class InvestmentDetail(DetailView):
         context['companies'] = Company.objects.all()
         return context
 
-class AddInvestment(CreateView):
+class AddInvestment1(TemplateView):
+    model = Investment
+    #form_class = InvestmentForm
+    fields = ['date','company', 'fund', 'instrument', 'committed_amount']
     template_name = 'investments/add_investment.html'
-    form_class = InvestmentForm
     success_url = reverse_lazy('investments')
 
     def form_valid(self, form):
-        form.save()
         return super().form_valid(form)
 
-class EditInvestment(UpdateView):
+class EditInvestment1(UpdateView):
     model = Investment
     form_class = InvestmentForm
     template_name = 'investments/edit_investment.html'
     pk_url_kwarg = 'pk'
     success_url = reverse_lazy('investments')
 
-class DeleteInvestment(DeleteView):
+class DeleteInvestment1(DeleteView):
     model = Investment
     pk_url_kwarg = 'pk'
     template_name = "investments/confirm_delete.html"
@@ -1578,7 +1877,7 @@ class AddCompany(CreateView):
         form.save()
         return super().form_valid(form)
 
-class EditCompany(UpdateView):
+class EditCompany1(UpdateView):
     model = Company
     form_class = CompanyForm
     template_name = 'companies/edit_company.html'

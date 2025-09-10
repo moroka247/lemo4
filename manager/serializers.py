@@ -126,3 +126,14 @@ class FundParameterSerializer(serializers.ModelSerializer):
     class Meta:
         model = FundParameter
         fields = '__all__'
+
+class ExcpenseCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpenseCategory
+        fields = '__all__'
+
+class ExpenseTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpenseType
+        fields = '__all__'
+

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}
+Investment details
+{% endblock title %}
+
+{% block content %}
+
+<h5>{{investment}}</h5>
+<hr>
+
+<b>
+<ul class="nav nav-tabs">
+    <li class="nav-item"><a class="nav-link active" aria-current="page" href="#overview" data-bs-toggle="tab" role="tab">Overview</a></li>
+    <li class="nav-item"><a class="nav-link" href="#description" data-bs-toggle="tab" role="tab">Company description</a></li>
+    <li class="nav-item"><a class="nav-link" href="#shareholding" data-bs-toggle="tab" role="tab">Shareholding structure</a></li>
+    <li class="nav-item"><a class="nav-link" href="#financial" data-bs-toggle="tab" role="tab">Financial information</a></li>
+    <li class="nav-item"><a class="nav-link" href="#cash_flows" data-bs-toggle="tab" role="tab">Cash flows</a></li>
+    <li class="nav-item"><a class="nav-link" href="#reporting" data-bs-toggle="tab" role="tab">Reporting</a></li>
+    <li class="nav-item"><a class="nav-link" href="#valuation" data-bs-toggle="tab" role="tab">Valuation</a></li>
+    <li class="nav-item"><a class="nav-link" href="#documents" data-bs-toggle="tab" role="tab">Documents</a></li>
+</ul>
+</b>
+
+<div class="tab-content mt-3">
+
+    <div role="tabpanel" class="tab-pane fade show active" id="overview">
+
+        <div class="card card-body shadow">
+            <table class="table">
+                <thead>
+                    <th>Investment Instruments</th>
+                </thead>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="description">
+        <h5>Company description</h5>
+        <p class="">{{company.description}}</p>
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="shareholding">
+        <h5>Shareholding structure</h5>
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="financial">
+        <h5>Financial information</h5>
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="cash_flows">
+        <h5>Cash flows</h5>
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="reporting">
+        <h5>Reporting</h5>
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="valuation">
+        <h5>Valuation</h5>
+    </div>
+
+    <div role="tabpanel" class="tab-pane fade" id="documents">
+        <h5>Documents</h5>
+    </div>
+
+</div>
+
+{% endblock content %}

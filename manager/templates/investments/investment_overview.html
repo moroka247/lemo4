@@ -1,72 +1,480 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}
-Investment details
+{{ company.name }} - Company Details
 {% endblock title %}
 
 {% block content %}
 
-<h5>{{investment}}</h5>
-<hr>
-
-<b>
-<ul class="nav nav-tabs">
-    <li class="nav-item"><a class="nav-link active" aria-current="page" href="#overview" data-bs-toggle="tab" role="tab">Overview</a></li>
-    <li class="nav-item"><a class="nav-link" href="#description" data-bs-toggle="tab" role="tab">Company description</a></li>
-    <li class="nav-item"><a class="nav-link" href="#shareholding" data-bs-toggle="tab" role="tab">Shareholding structure</a></li>
-    <li class="nav-item"><a class="nav-link" href="#financial" data-bs-toggle="tab" role="tab">Financial information</a></li>
-    <li class="nav-item"><a class="nav-link" href="#cash_flows" data-bs-toggle="tab" role="tab">Cash flows</a></li>
-    <li class="nav-item"><a class="nav-link" href="#reporting" data-bs-toggle="tab" role="tab">Reporting</a></li>
-    <li class="nav-item"><a class="nav-link" href="#valuation" data-bs-toggle="tab" role="tab">Valuation</a></li>
-    <li class="nav-item"><a class="nav-link" href="#documents" data-bs-toggle="tab" role="tab">Documents</a></li>
-</ul>
-</b>
-
-<div class="tab-content mt-3">
-
-    <div role="tabpanel" class="tab-pane fade show active" id="overview">
-
-        <div class="card card-body shadow">
-            <table class="table">
-                <thead>
-                    <th>Investment Instruments</th>
-                </thead>
-
-            </table>
-
+<div class="container-fluid company-detail-dashboard">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">{{ company.name }}</h2>
+                    <p class="text-muted mb-0">{{ company.industry }} • {{ company.country }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'edit_company' pk=company.id %}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-edit me-2"></i>Edit Company
+                    </a>
+                    <a href="{% url 'add_investment' %}?company={{ company.id }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add Investment
+                    </a>
+                </div>
+            </div>
+            <hr class="mt-3">
         </div>
-
     </div>
 
-    <div role="tabpanel" class="tab-pane fade" id="description">
-        <h5>Company description</h5>
-        <p class="">{{company.description}}</p>
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card summary-card h-100">
+                <div class="card-body text-center">
+                    <div class="summary-icon bg-primary mb-3">
+                        <i class="fas fa-chart-line text-white"></i>
+                    </div>
+                    <div class="summary-value text-primary">${{ total_committed|floatformat:2 }}</div>
+                    <div class="summary-label">Total Committed</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card summary-card h-100">
+                <div class="card-body text-center">
+                    <div class="summary-icon bg-info mb-3">
+                        <i class="fas fa-money-bill-wave text-white"></i>
+                    </div>
+                    <div class="summary-value text-info">${{ total_invested|floatformat:2 }}</div>
+                    <div class="summary-label">Total Invested</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card summary-card h-100">
+                <div class="card-body text-center">
+                    <div class="summary-icon bg-success mb-3">
+                        <i class="fas fa-hand-holding-usd text-white"></i>
+                    </div>
+                    <div class="summary-value text-success">${{ total_realised|floatformat:2 }}</div>
+                    <div class="summary-label">Total Realised</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card summary-card h-100">
+                <div class="card-body text-center">
+                    <div class="summary-icon bg-warning mb-3">
+                        <i class="fas fa-building text-white"></i>
+                    </div>
+                    <div class="summary-value text-warning">{{ investment_count }}</div>
+                    <div class="summary-label">Investments</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div role="tabpanel" class="tab-pane fade" id="shareholding">
-        <h5>Shareholding structure</h5>
+    <!-- Tab Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="overview-tab" data-bs-toggle="tab" href="#overview" role="tab">
+                        <i class="fas fa-chart-pie me-2"></i>Overview
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="investments-tab" data-bs-toggle="tab" href="#investments" role="tab">
+                        <i class="fas fa-money-bill-wave me-2"></i>Investments
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="description-tab" data-bs-toggle="tab" href="#description" role="tab">
+                        <i class="fas fa-file-alt me-2"></i>Description
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="financial-tab" data-bs-toggle="tab" href="#financial" role="tab">
+                        <i class="fas fa-chart-line me-2"></i>Financial Info
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="valuation-tab" data-bs-toggle="tab" href="#valuation" role="tab">
+                        <i class="fas fa-chart-bar me-2"></i>Valuation
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="documents-tab" data-bs-toggle="tab" href="#documents" role="tab">
+                        <i class="fas fa-file-pdf me-2"></i>Documents
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
 
-    <div role="tabpanel" class="tab-pane fade" id="financial">
-        <h5>Financial information</h5>
-    </div>
+    <!-- Tab Content -->
+    <div class="row">
+        <div class="col-12">
+            <div class="tab-content">
+                <!-- Overview Tab -->
+                <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Investment Summary</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="metric-card">
+                                                <div class="metric-label">Company Name</div>
+                                                <div class="metric-value">{{ company.name }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="metric-card">
+                                                <div class="metric-label">Registration Number</div>
+                                                <div class="metric-value">{{ company.registration_no }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="metric-card">
+                                                <div class="metric-label">Industry</div>
+                                                <div class="metric-value">{{ company.industry }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="metric-card">
+                                                <div class="metric-label">Country</div>
+                                                <div class="metric-value">{{ company.country }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="progress-container mt-4">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Investment Completion</span>
+                                            <span>{% widthratio total_invested total_committed 100 %}%</span>
+                                        </div>
+                                        <div class="progress" style="height: 12px;">
+                                            <div class="progress-bar bg-success" 
+                                                 style="width: {% widthratio total_invested total_committed 100 %}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Funds & Instruments</h5>
+                                </div>
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-3">Investing Funds</h6>
+                                    {% for fund in funds %}
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-building text-primary me-2"></i>
+                                        <span>{{ fund.name }}</span>
+                                    </div>
+                                    {% endfor %}
+                                    
+                                    <hr>
+                                    
+                                    <h6 class="text-muted mb-3">Investment Instruments</h6>
+                                    {% for instrument in instruments %}
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-file-contract text-info me-2"></i>
+                                        <span>{{ instrument.name }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    <div role="tabpanel" class="tab-pane fade" id="cash_flows">
-        <h5>Cash flows</h5>
-    </div>
+                <!-- Investments Tab -->
+                <div class="tab-pane fade" id="investments" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Investment Details</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if investments %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Fund</th>
+                                            <th>Instrument</th>
+                                            <th>Committed</th>
+                                            <th>Invested</th>
+                                            <th>Realised</th>
+                                            <th>Valuation</th>
+                                            <th>IRR</th>
+                                            <th>MOIC</th>
+                                            <th>Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for investment in investments %}
+                                        <tr>
+                                            <td>{{ investment.fund }}</td>
+                                            <td>{{ investment.instrument }}</td>
+                                            <td>${{ investment.committed_amount|floatformat:2 }}</td>
+                                            <td>${{ investment.invested_amount|floatformat:2 }}</td>
+                                            <td>${{ investment.realised_proceeds|floatformat:2 }}</td>
+                                            <td>${{ investment.valuation|floatformat:2 }}</td>
+                                            <td class="{% if investment.IRR > 0 %}text-success{% elif investment.IRR < 0 %}text-danger{% endif %}">
+                                                {{ investment.IRR|floatformat:2 }}%
+                                            </td>
+                                            <td class="{% if investment.MOIC > 1 %}text-success{% elif investment.MOIC < 1 %}text-danger{% endif %}">
+                                                {{ investment.MOIC|floatformat:2 }}x
+                                            </td>
+                                            <td>{{ investment.date|date:"M d, Y"|default:"-" }}</td>
+                                            <td>
+                                                <a href="{% url 'edit_investment' pk=investment.id %}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No investments found for this company</p>
+                                <a href="{% url 'add_investment' %}?company={{ company.id }}" class="btn btn-primary">
+                                    <i class="fas fa-plus me-2"></i>Add Investment
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
 
-    <div role="tabpanel" class="tab-pane fade" id="reporting">
-        <h5>Reporting</h5>
-    </div>
+                <!-- Description Tab -->
+                <div class="tab-pane fade" id="description" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Company Description</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if company.description %}
+                            <p class="lead" style="font-size: medium;">{{ company.description }}</p>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No description available</p>
+                                <a href="{% url 'edit_company' pk=company.id %}" class="btn btn-primary">
+                                    <i class="fas fa-edit me-2"></i>Add Description
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
 
-    <div role="tabpanel" class="tab-pane fade" id="valuation">
-        <h5>Valuation</h5>
-    </div>
+                <!-- Financial Info Tab -->
+                <div class="tab-pane fade" id="financial" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Financial Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center py-4">
+                                <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">Financial information will be displayed here</p>
+                                <p class="text-muted small">This section can include financial statements, KPIs, and performance metrics</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    <div role="tabpanel" class="tab-pane fade" id="documents">
-        <h5>Documents</h5>
-    </div>
+                <!-- Valuation Tab -->
+                <div class="tab-pane fade" id="valuation" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Valuation History</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if valuations %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Investment</th>
+                                            <th>Valuation</th>
+                                            <th>Note</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for valuation in valuations %}
+                                        <tr>
+                                            <td>{{ valuation.valuation_date|date:"M d, Y" }}</td>
+                                            <td>{{ valuation.investment.fund }} - {{ valuation.investment.instrument }}</td>
+                                            <td>${{ valuation.value|floatformat:2 }}</td>
+                                            <td>{{ valuation.note|default:"-" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No valuation records found</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
 
+                <!-- Documents Tab -->
+                <div class="tab-pane fade" id="documents" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Company Documents</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center py-4">
+                                <i class="fas fa-file-pdf fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No documents available</p>
+                                <p class="text-muted small">Upload financial statements, reports, and other documents here</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+.company-detail-dashboard {
+    padding: 20px 0;
+}
+
+.summary-card {
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid #eaecf4;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+.summary-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.summary-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 10px 0;
+}
+
+.summary-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.metric-card {
+    padding: 15px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    margin-bottom: 15px;
+}
+
+.metric-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.metric-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2e3a59;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6c757d;
+    font-weight: 500;
+    padding: 12px 20px;
+}
+
+.nav-tabs .nav-link.active {
+    color: #417a59;
+    border-bottom-color: #417a59;
+    background: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #417a59;
+    border-bottom-color: #dee2e6;
+}
+
+.progress-container {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+/* Animation for cards */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.summary-card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .summary-value {
+        font-size: 1.5rem;
+    }
+    
+    .summary-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+}
+</style>
 
 {% endblock content %}

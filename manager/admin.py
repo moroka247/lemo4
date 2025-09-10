@@ -1,5 +1,5 @@
 from django.contrib import admin
-from . models import *
+from .models import *
 from .forms import FundParameterForm
 
 admin.site.register(Currency)
@@ -39,3 +39,19 @@ class ManagementFeesAdmin(admin.ModelAdmin):
         'total_fee_amount',
         'paid'
     ]
+
+@admin.register(ExpenseCategory)
+class ExpenseCategoryAdmin(admin.ModelAdmin):
+    list_display = ['name']
+    search_fields = ['name']
+
+# Simple admin for ExpenseType - remove any complex fields temporarily
+@admin.register(ExpenseType)
+class ExpenseTypeAdmin(admin.ModelAdmin):
+    list_display = ['name']  # Only show name for now
+    search_fields = ['name']
+
+@admin.register(InvestmentAllocation)
+class InvestmentAllocationAdmin(admin.ModelAdmin):
+    list_display = ['investment', 'investor', 'allocated_amount']
+    search_fields = ['investment__company__name', 'investor__name']

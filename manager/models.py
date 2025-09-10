@@ -249,15 +249,29 @@ class FundClose(models.Model):
     
 class CallType(models.Model):
     name = models.CharField(max_length=100)
+    category = models.CharField(max_length=20, choices=(
+        ('INVESTMENT', 'Investment'),
+        ('EXPENSE', 'Expense'),
+        ('FEE', 'Fee')
+    ), default='EXPENSE')
 
+    def __str__(self):
+        return str(self.name)
+
+class ExpenseCategory(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    
     def __str__(self):
         return str(self.name)
 
 class ExpenseType(models.Model):
     name = models.CharField(max_length=100)
-
+    category = models.ForeignKey(ExpenseCategory, on_delete=models.CASCADE)
+    description = models.TextField(blank=True)
+    
     def __str__(self):
-        return str(self.type)  
+        return str(self.name)
 
 class DistributionType(models.Model):
     name = models.CharField(max_length=100)
@@ -439,6 +453,7 @@ class Investment(models.Model):
     instrument = models.ForeignKey(Instrument,on_delete=models.PROTECT)
     committed_amount = models.DecimalField(max_digits=12, decimal_places=2,default=0.00)
     invested_amount = models.DecimalField(max_digits=12,decimal_places=2,default=0.00)
+    date = models.DateField(null=True, blank=True)
     realised_proceeds = models.DecimalField(max_digits=12,decimal_places=2,default=0.00)
     valuation = models.DecimalField(max_digits=12,decimal_places=2,default=0.00)
     IRR = models.DecimalField(max_digits=4,decimal_places=3,default=0.00)
@@ -449,6 +464,18 @@ class Investment(models.Model):
 
     def get_absolute_url(self):
         return reverse('investment_detail', kwargs={'pk':self.pk})
+
+class InvestmentAllocation(models.Model):
+    investment = models.ForeignKey(Investment, on_delete=models.CASCADE)
+    investor = models.ForeignKey(Investor, on_delete=models.CASCADE)
+    allocated_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    allocation_percentage = models.DecimalField(max_digits=5, decimal_places=4)  # 0.0000 to 1.0000
+    
+    class Meta:
+        unique_together = ('investment', 'investor')
+    
+    def __str__(self):
+        return f"{self.investor} - {self.investment}: {self.allocation_percentage:.2%}"
 
 class Valuation(models.Model):
     investment = models.ForeignKey(Investment, on_delete=models.CASCADE, related_name='valuations')
@@ -477,9 +504,6 @@ class OperatingIncome(models.Model):
     investor = models.ForeignKey(Investor,on_delete=models.CASCADE)
     income_type = models.ForeignKey(IncomeType,on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=12,decimal_places=2)
-
-class ExpenseType(models.Model):
-    name = models.CharField(max_length=100)
 
 class OperatingExpense(models.Model):
     fund = models.ForeignKey(Fund,on_delete=models.CASCADE)

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}
+Investments home
+{% endblock title %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row my-2">
+        <div class="col-md-8"><h4 style="font-weight: bold;">INVESTMENTS</h4></div>
+    </div>
+</div>
+
+<div class="container shadow">
+
+    <!-- Search Form -->
+    <form method="get" class="d-flex mb-3">
+        <input 
+            type="text" 
+            name="q" 
+            class="form-control me-2" 
+            placeholder="Search investment..." 
+            value="{{ search_query }}"
+        >
+        <button type="submit" class="btn btn-outline-success">Search</button>
+    </form>
+
+    <a class="btn btn-success btn-sm btn-block mt-3 mb-3 col-12" href="{% url 'add_investment' %}">
+        <i class="fas fa-plus"> Add New Deal</i>
+    </a>
+
+    <table class="table table-bordered table-hover table-sm" cellspacing="1px">
+        <thead class="border-bottom">
+            <tr class="" style="font-weight:bold">
+                <th>Company name</th>
+                <th>Fund name</th>
+                <th style="text-align: center;">Instrument</th>
+                <th style="text-align: right;">Committed</th>
+                <th style="text-align: right;">Invested</th>
+                <th style="text-align: center;">Perf. status</th>
+                <th style="text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if investments %}
+                {% for investment in investments %}
+                    <tr class="border-bottom" onclick="window.location='{{investment.get_absolute_url}}';"  style="cursor: pointer;">
+                        <td>{{investment.company}}</td>
+                        <td>{{investment.fund}}</td>
+                        <td style="text-align: center;">{{investment.instrument}}</td>
+                        <td style="text-align: right;">{{investment.committed_amount}}</td>
+                        <td style="text-align: right;">{{investment.invested_amount}}</td>
+                        <td style="text-align: center;">Performing</td>
+                        <td style="text-align: center;">
+                            <a href="{% url 'edit_investment' pk=investment.id %}" style="color: #28a745; font-size: 1rem;">
+                                <i class="fas fa-edit"></i>
+                            </a> &nbsp;&nbsp;&nbsp;
+                            <a href="{% url 'delete_investment' pk=investment.id %}" style="color: #dc3545; font-size: 1rem;">
+                                <i class="fas fa-trash-alt"></i>
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <td>There are no investments to display</td>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}
